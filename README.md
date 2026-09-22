@@ -8,9 +8,10 @@ list, placed by coordinates in a grid, or moved between the two, and every move
 arrives at your state layer as one complete candidate that you can accept or
 reject.
 
-> **Pre-release.** This package is not on npm yet, and its peer versions are
-> pinned to the exact combination it has been verified against. Read
-> [Status and limitations](#status-and-limitations) before adopting it.
+> **Pre-release.** `0.1.0-alpha.0` is the first published version. Only one
+> combination of peer versions has been built and run, and device verification
+> is incomplete. Read [Status and limitations](#status-and-limitations) before
+> adopting it.
 
 ## Why this library
 
@@ -70,22 +71,21 @@ module.exports = {
 
 ## Installation
 
-Not published yet. Build a tarball from a clone and install it by path:
-
 ```sh
-git clone https://github.com/baesumin/react-native-layout-dnd.git
-cd react-native-layout-dnd
-yarn install
-npm pack
+yarn add react-native-layout-dnd@next
+# or: npm install react-native-layout-dnd@next
 ```
 
+Install the peers too if your app does not have them yet, then rebuild the
+native app:
+
 ```sh
-# in your app
-yarn add /absolute/path/to/react-native-layout-dnd-0.1.0-alpha.0.tgz
+yarn add react-native-gesture-handler react-native-reanimated react-native-worklets
 ```
 
-Installing straight from the Git URL does not work, because the entry points
-come from a build that only runs while packing.
+Prereleases are published under the `next` tag. Installing from the Git URL
+does not work, because the entry points come from a build that only runs while
+packing.
 
 ## Quick start
 
@@ -242,8 +242,7 @@ of the packed API and its types.
 
 Known gaps, stated so you can judge the risk:
 
-- **Not published.** The package stays `private` until the release criteria are
-  met, and the public API may still change.
+- **Alpha.** The public API may still change before `0.1.0`.
 - **One verified combination.** The peer ranges above come from the APIs this
   package calls, not from a test matrix. Only the versions in the Verified
   column have been built and run, and Expo has not been tried.

@@ -1,17 +1,21 @@
 name: Release
 
-# Publishes the root package to npm when a version tag is pushed.
-# Authentication is npm trusted publishing (OIDC), so no token is stored here.
-# The very first publish of a package cannot use OIDC: npm only lets a trusted
-# publisher be configured for a package that already exists, so release 1 is
-# published by hand. See "Publishing a release" in CONTRIBUTING.md.
+# Publishes the root package to npm and creates the matching GitHub release
+# when a version tag is pushed. npm authentication is trusted publishing (OIDC),
+# so no token is stored here. The very first publish of a package cannot use
+# OIDC: npm only lets a trusted publisher be configured for a package that
+# already exists, so release 1 is published by hand. A version that is already
+# on npm is not published again, so pushing its tag afterwards only creates the
+# GitHub release. See "Publishing a release" in CONTRIBUTING.md.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # contents: write creates the GitHub release; id-token: write is the OIDC
+  # token npm exchanges for a short-lived publish credential.
+  contents: write
   id-token: write
 
 concurrency:
@@ -55,10 +59,38 @@ jobs:
             *-*) tag=next ;;
             *) tag=latest ;;
           esac
+          name=$(node -p "require('./package.json').name")
+          # Ask the registry directly: setup-node writes a placeholder auth token
+          # that can make an authenticated npm view fail for a public package.
+          if curl --silent --fail --output /dev/null "https://registry.npmjs.org/$name/$version"; then
+            published=true
+          else
+            published=false
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "Publishing $version under the $tag dist-tag"
+          echo "published=$published" >> "$GITHUB_OUTPUT"
+          echo "$name@$version, dist-tag $tag, already on npm: $published"
       # prepack runs the Bob build. Provenance is attached automatically by
       # trusted publishing, so --provenance is not passed here.
       - name: Publish
+        if: steps.release.outputs.published == 'false'
         run: npm publish --tag "${{ steps.release.outputs.tag }}"
+      # Prereleases are marked as such so the repository page keeps showing the
+      # last stable release as "Latest".
+      - name: Create the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} already exists"
+            exit 0
+          fi
+          prerelease=""
+          if [ "${{ steps.release.outputs.tag }}" = "next" ]; then prerelease="--prerelease"; fi
+          gh release create "${{ github.ref_name }}" \
+            --verify-tag \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            $prerelease

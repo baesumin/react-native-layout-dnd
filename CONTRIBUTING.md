@@ -113,4 +113,4 @@ npm version 0.1.0-alpha.1  # or edit package.json and commit
 git push --follow-tags
 ```
 
-After the first successful publish, replace the Installation section of the README with `yarn add react-native-layout-dnd@next`, because the tarball instructions exist only while the package is unpublished.
+The same workflow creates the GitHub release for the tag, marked as a prerelease when the version has a hyphen, with notes generated from the commits since the previous tag. A version that is already on npm is not published again, so a tag pushed after a manual publish only creates the release.
