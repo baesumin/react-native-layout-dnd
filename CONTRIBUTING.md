@@ -4,33 +4,33 @@ This repository is preparing its first public release. Start with [status and li
 
 ## Workspace setup
 
-The root package contains the library and `example/` contains a React Native Community CLI consumer. Use the Node version in [`.nvmrc`](.nvmrc) and the bundled Yarn 4.11.0:
+The root package contains the library and `example/` contains a React Native Community CLI consumer. Use the Node version in [`.nvmrc`](.nvmrc). The repository pins Yarn 4.11.0 through `packageManager` and `yarnPath`, so a plain `yarn` runs that version; if Yarn is missing or is Yarn 1, run `node .yarn/releases/yarn-4.11.0.cjs` in its place, as the workflows do.
 
 ```sh
-node .yarn/releases/yarn-4.11.0.cjs install
+yarn install
 ```
 
-If Yarn 4 is already configured, `yarn install` is equivalent. Keep dependency changes and the workspace lockfile together; do not add an npm or Yarn 1 lockfile.
+Keep dependency changes and the workspace lockfile together; do not add an npm or Yarn 1 lockfile.
 
 ## Checks
 
 Run relevant tests while working, then run the complete package checks before submitting a change:
 
 ```sh
-node .yarn/releases/yarn-4.11.0.cjs typecheck
-node .yarn/releases/yarn-4.11.0.cjs test
-node .yarn/releases/yarn-4.11.0.cjs lint
-node .yarn/releases/yarn-4.11.0.cjs build
-node .yarn/releases/yarn-4.11.0.cjs check:package
+yarn typecheck
+yarn test
+yarn lint
+yarn build
+yarn check:package
 ```
 
-| Script          | Purpose                                                |
-| --------------- | ------------------------------------------------------ |
-| `typecheck`     | Check TypeScript without generating a release          |
-| `test`          | Run the extracted test suite                           |
-| `lint`          | Check JavaScript and TypeScript style and lint rules   |
-| `build`         | Generate ESM and TypeScript declarations with Bob      |
-| `check:package` | Check configured package entry points and build output |
+| Script            | Purpose                                                     |
+| ----------------- | ----------------------------------------------------------- |
+| `typecheck`       | Check TypeScript without generating a release               |
+| `test`            | Run the extracted test suite                                |
+| `lint`            | Check JavaScript and TypeScript style and lint rules        |
+| `build`           | Generate ESM and TypeScript declarations with Bob           |
+| `check:package`   | Check configured package entry points and build output      |
 | `test:perf-tools` | Run the performance tooling's own checks with `node --test` |
 
 Current verification counts are in the [README project status](README.md#project-status). Record new results separately, including any tests that could not run.
@@ -49,15 +49,15 @@ bundle exec pod install
 From the repository root, start Metro:
 
 ```sh
-node .yarn/releases/yarn-4.11.0.cjs example start
+yarn example start
 ```
 
 In another terminal, also from the repository root:
 
 ```sh
-node .yarn/releases/yarn-4.11.0.cjs example ios
+yarn example ios
 # Or:
-node .yarn/releases/yarn-4.11.0.cjs example android
+yarn example android
 ```
 
 The example uses local library source. Rebuild the native app after native dependency changes. Keep `react-native-worklets/plugin` in the consuming app's Babel configuration; the package's test configuration also uses it. Do not precompile the library's worklets with the release machine's plugin version.
@@ -90,4 +90,27 @@ The workspace example tests source integration. A successful source import does 
 
 Keep each change focused. Explain the previous behavior, the resulting behavior, and the tests or native checks performed. Update examples and public types when an API changes.
 
-The intended repository owner is `baesumin`, and the license is MIT. The bootstrap does not create a remote GitHub repository or publish to npm. Keep `private: true` while release requirements remain open. Release work includes the tested support matrix, complete first-release scope, package installation checks, documentation, CI, and npm publishing configuration described in the implementation plan.
+The repository owner is `baesumin`, and the license is MIT. Remaining release work is listed under [status and limitations](README.md#status-and-limitations): a tested support matrix, the open device checks, and screen-reader announcements.
+
+## Publishing a release
+
+Prereleases go out under the `next` dist-tag, so `npm install react-native-layout-dnd` keeps resolving to the last stable release. A version without a hyphen publishes as `latest`.
+
+[`release.yml`](.github/workflows/release.yml) publishes with npm trusted publishing (OIDC), so no npm token is stored in this repository. It repeats the full verification before publishing and refuses a tag that disagrees with `package.json`.
+
+npm can only attach a trusted publisher to a package that already exists, so the first release is published by hand:
+
+```sh
+yarn install
+npm whoami                 # log in with `npm login` first
+npm publish --tag next     # prepack runs the Bob build
+```
+
+Then, on npmjs.com, open the package settings and add a GitHub Actions trusted publisher with organization `baesumin`, repository `react-native-layout-dnd` and workflow filename `release.yml`. Every later release is a tag push:
+
+```sh
+npm version 0.1.0-alpha.1  # or edit package.json and commit
+git push --follow-tags
+```
+
+After the first successful publish, replace the Installation section of the README with `yarn add react-native-layout-dnd@next`, because the tarball instructions exist only while the package is unpublished.

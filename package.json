@@ -1,7 +1,6 @@
 {
   "name": "react-native-layout-dnd",
   "version": "0.1.0-alpha.0",
-  "private": true,
   "description": "Drag and drop for React Native grids and lists: mixed spans, optional FlatList virtualization, and atomic moves between zones.",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",

@@ -39,22 +39,22 @@ reject.
 
 | Peer dependency              | Accepted range   | Verified |
 | ---------------------------- | ---------------- | -------- |
-| React                        | `>=19.0.0`       | 19.2.3   |
 | React Native                 | `>=0.78.0`       | 0.87.1   |
 | React Native Gesture Handler | `>=3.0.0 <4.0.0` | 3.3.0    |
 | React Native Reanimated      | `>=4.0.0 <5.0.0` | 4.6.0    |
 | React Native Worklets        | `>=0.5.0 <1.0.0` | 0.12.2   |
 
-The New Architecture is required, because Reanimated 4 supports nothing else.
+React is a peer too, at 19 or newer, but your React Native version already
+decides it. The New Architecture is required, because Reanimated 4 supports
+nothing else.
 
 Each lower bound is the release that introduced an API this package calls: the
 v3 gesture hooks in Gesture Handler 3.0.0, the worklets package split in
-Reanimated 4.0.0, `scheduleOnUI`, `scheduleOnRN` and `runOnUISync` in Worklets
-0.5.0, and refs as props plus context components in React 19. Only the
-**Verified** column has actually been built and run end to end, so treat the
-rest of the range as accepted rather than tested, and pin what works for you.
-Reanimated and Worklets constrain your React Native version further through
-their own peer ranges.
+Reanimated 4.0.0, and `scheduleOnUI`, `scheduleOnRN` and `runOnUISync` in
+Worklets 0.5.0. Only the **Verified** column has actually been built and run
+end to end, so treat the rest of the range as accepted rather than tested, and
+pin what works for you. Reanimated and Worklets constrain your React Native
+version further through their own peer ranges.
 
 Your app must also render the provider under `GestureHandlerRootView` and enable
 the Worklets Babel plugin. This package ships worklet directives uncompiled so
@@ -75,7 +75,7 @@ Not published yet. Build a tarball from a clone and install it by path:
 ```sh
 git clone https://github.com/baesumin/react-native-layout-dnd.git
 cd react-native-layout-dnd
-node .yarn/releases/yarn-4.11.0.cjs install
+yarn install
 npm pack
 ```
 
@@ -229,8 +229,9 @@ Runnable examples live in [`example/`](example/), including a 580-item
 `FlatList` tab and a mixed grid and list screen:
 
 ```sh
-node .yarn/releases/yarn-4.11.0.cjs example start
-node .yarn/releases/yarn-4.11.0.cjs example ios     # or: example android
+yarn install
+yarn example start
+yarn example ios     # or: yarn example android
 ```
 
 ## Status and limitations
@@ -255,24 +256,6 @@ Known gaps, stated so you can judge the risk:
   [accessibility support level](docs/list-scroll-api.md#accessibility-reduced-motion-and-alternative-movement).
 - **Virtualization is list-only.** Grid zones render every placement, and there
   are no FlashList or LegendList adapters.
-
-## Development
-
-Use the Node version in [`.nvmrc`](.nvmrc). The repository pins Yarn 4.11.0, so
-you do not need to change a global Yarn installation:
-
-```sh
-node .yarn/releases/yarn-4.11.0.cjs install
-node .yarn/releases/yarn-4.11.0.cjs typecheck
-node .yarn/releases/yarn-4.11.0.cjs lint
-node .yarn/releases/yarn-4.11.0.cjs test
-node .yarn/releases/yarn-4.11.0.cjs build
-node .yarn/releases/yarn-4.11.0.cjs check:package
-```
-
-With Yarn 4 configured, `yarn` works in place of the release path. The example
-app resolves the library source directly, so it does not replace the tarball
-check above.
 
 ## License
 
