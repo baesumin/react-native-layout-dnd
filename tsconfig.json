@@ -1,0 +1,32 @@
+{
+  "extends": "@react-native/typescript-config",
+  "include": ["src", "tests", "example/src"],
+  "exclude": ["node_modules", "lib", "example/node_modules"],
+  "compilerOptions": {
+    "rootDir": ".",
+    "paths": {
+      "react-native-layout-dnd": ["./src/index"],
+      "react-native-layout-dnd/engine": ["./src/engine/index"]
+    },
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "customConditions": ["react-native-layout-dnd-source", "react-native"],
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ESNext",
+    "verbatimModuleSyntax": true
+  }
+}

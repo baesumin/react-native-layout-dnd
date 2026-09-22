@@ -1,0 +1,137 @@
+{
+  "name": "react-native-layout-dnd",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "description": "Drag and drop for React Native grids and lists: mixed spans, optional FlatList virtualization, and atomic moves between zones.",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native-layout-dnd-source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./engine": {
+      "react-native-layout-dnd-source": "./src/engine/index.ts",
+      "types": "./lib/typescript/src/engine/index.d.ts",
+      "default": "./lib/module/engine/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "example": "yarn workspace react-native-layout-dnd-example",
+    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "build": "bob build",
+    "prepack": "bob build",
+    "test": "jest --runInBand --watchman=false",
+    "typecheck": "tsc",
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "check:package": "node scripts/check-package.mjs",
+    "test:perf-tools": "node --test scripts/perf/metrics.test.mjs"
+  },
+  "keywords": [
+    "react-native",
+    "drag-and-drop",
+    "dnd",
+    "drag",
+    "drop",
+    "draggable",
+    "sortable",
+    "reorderable",
+    "grid",
+    "list",
+    "flatlist",
+    "reanimated",
+    "gesture-handler",
+    "ios",
+    "android"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/baesumin/react-native-layout-dnd.git"
+  },
+  "author": {
+    "name": "baesumin",
+    "url": "https://github.com/baesumin"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/baesumin/react-native-layout-dnd/issues"
+  },
+  "homepage": "https://github.com/baesumin/react-native-layout-dnd#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "devDependencies": {
+    "@babel/core": "7.29.7",
+    "@eslint/compat": "^2.1.0",
+    "@eslint/eslintrc": "^3.3.6",
+    "@eslint/js": "^9.39.5",
+    "@react-native/babel-preset": "0.87.1",
+    "@react-native/eslint-config": "0.87.1",
+    "@react-native/jest-preset": "0.87.1",
+    "@react-native/metro-config": "0.87.1",
+    "@react-native/typescript-config": "0.87.1",
+    "@types/jest": "29.5.14",
+    "@types/react": "^19.2.0",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "jest": "29.7.0",
+    "prettier": "^3.9.6",
+    "react": "19.2.3",
+    "react-native": "0.87.1",
+    "react-native-builder-bob": "^0.43.1",
+    "react-native-gesture-handler": "3.3.0",
+    "react-native-reanimated": "4.6.0",
+    "react-native-worklets": "0.12.2",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "react": ">=19.0.0",
+    "react-native": ">=0.78.0",
+    "react-native-gesture-handler": ">=3.0.0 <4.0.0",
+    "react-native-reanimated": ">=4.0.0 <5.0.0",
+    "react-native-worklets": ">=0.5.0 <1.0.0"
+  },
+  "workspaces": [
+    "example"
+  ],
+  "packageManager": "yarn@4.11.0",
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "prettier": {
+    "arrowParens": "avoid",
+    "quoteProps": "consistent",
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "all",
+    "useTabs": false
+  }
+}

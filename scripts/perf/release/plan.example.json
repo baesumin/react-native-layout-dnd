@@ -1,0 +1,8 @@
+[
+  { "method": "testFlatListLongEdgeDrag", "name": "longedge", "variants": ["base", "cand", "cand", "base", "base", "cand"] },
+  { "method": "testFlatListEdgeDrag", "name": "edge", "variants": ["base", "cand", "cand", "base", "base", "cand"] },
+  { "method": "testFlatListDrag", "name": "drag", "variants": ["base", "cand", "cand", "base", "base", "cand"] },
+  { "method": "testFlatListScroll", "name": "scroll", "variants": ["base", "cand", "cand", "base"] },
+  { "method": "testFlatListEdgeDrag", "name": "edge-c2", "variants": ["noc2", "cand", "cand", "noc2", "noc2", "cand"] },
+  { "method": "testFlatListLongEdgeDrag", "name": "longedge-c2", "variants": ["noc2", "cand", "cand", "noc2"] }
+]
