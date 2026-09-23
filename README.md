@@ -1,5 +1,8 @@
 # React Native Layout DnD
 
+[![npm](https://img.shields.io/npm/v/react-native-layout-dnd)](https://www.npmjs.com/package/react-native-layout-dnd)
+[![CI](https://github.com/baesumin/react-native-layout-dnd/actions/workflows/ci.yml/badge.svg)](https://github.com/baesumin/react-native-layout-dnd/actions/workflows/ci.yml)
+
 Drag and drop for React Native grids and lists, built on Reanimated worklets and
 Gesture Handler.
 
@@ -8,10 +11,9 @@ list, placed by coordinates in a grid, or moved between the two, and every move
 arrives at your state layer as one complete candidate that you can accept or
 reject.
 
-> **Pre-release.** `0.1.0-alpha.0` is the first published version. Only one
-> combination of peer versions has been built and run, and device verification
-> is incomplete. Read [Status and limitations](#status-and-limitations) before
-> adopting it.
+> **Alpha.** Only one combination of peer versions has been built and run, and
+> device verification is incomplete. Read
+> [Status and limitations](#status-and-limitations) before adopting it.
 
 ## Why this library
 
@@ -49,13 +51,8 @@ React is a peer too, at 19 or newer, but your React Native version already
 decides it. The New Architecture is required, because Reanimated 4 supports
 nothing else.
 
-Each lower bound is the release that introduced an API this package calls: the
-v3 gesture hooks in Gesture Handler 3.0.0, the worklets package split in
-Reanimated 4.0.0, and `scheduleOnUI`, `scheduleOnRN` and `runOnUISync` in
-Worklets 0.5.0. Only the **Verified** column has actually been built and run
-end to end, so treat the rest of the range as accepted rather than tested, and
-pin what works for you. Reanimated and Worklets constrain your React Native
-version further through their own peer ranges.
+Only the **Verified** column has been built and run end to end. The rest of
+each range is accepted but untested, so pin what works for you.
 
 Your app must also render the provider under `GestureHandlerRootView` and enable
 the Worklets Babel plugin. This package ships worklet directives uncompiled so
@@ -82,11 +79,6 @@ native app:
 ```sh
 yarn add react-native-gesture-handler react-native-reanimated react-native-worklets
 ```
-
-Until `0.1.0` every release is an alpha and the default install gets the newest
-one. After the first stable release, alphas move to the `next` tag. Installing
-from the Git URL does not work, because the entry points come from a build that
-only runs while packing.
 
 ## Quick start
 
@@ -148,34 +140,80 @@ footprint, so `getGridItemLayout` decides the span an incoming item takes. Keep
 that function stable, because it is captured once per drag.
 
 ```tsx
-<DndProvider
-  value={value}
-  onChange={onChange}
-  getGridItemLayout={({ item }) => ({
-    span: item.data.span,
-    placement: 'insert',
-  })}
-  style={{ flex: 1 }}
->
-  <SortableList<Card> zoneId="library" virtualization ... />
-  <SortableGrid<Card>
-    zoneId="board"
-    style={{ height: 240 }}
-    geometry={{
-      mode: 'fit',
-      rowGap: 8,
-      columnGap: 8,
-      padding: { top: 8, right: 8, bottom: 8, left: 8 },
-    }}
-    renderItem={({ item, width, height }) => (
-      <View style={{ width, height }}>
-        <DragHandle>
-          <Text>{item.data.title}</Text>
-        </DragHandle>
-      </View>
-    )}
-  />
-</DndProvider>
+import { Text, View } from 'react-native';
+import {
+  DndProvider,
+  DragHandle,
+  SortableGrid,
+  SortableList,
+  useDndState,
+  type CellSpan,
+  type GridItemLayoutResolverArgs,
+  type LayoutState,
+} from 'react-native-layout-dnd';
+
+type Card = { title: string; span: CellSpan };
+
+const initial: LayoutState<Card> = {
+  revision: 0,
+  items: [
+    { id: 'notes', data: { title: 'Notes', span: { rows: 1, cols: 2 } } },
+  ],
+  zones: [
+    {
+      id: 'library',
+      kind: 'list',
+      orientation: 'vertical',
+      itemIds: ['notes'],
+    },
+    { id: 'board', kind: 'grid', rows: 3, columns: 4, placements: [] },
+  ],
+};
+
+function getGridItemLayout({ item }: GridItemLayoutResolverArgs<Card>) {
+  return { span: item.data.span, placement: 'insert' as const };
+}
+
+export function Board() {
+  const { value, onChange } = useDndState(initial);
+  return (
+    <DndProvider
+      value={value}
+      onChange={onChange}
+      getGridItemLayout={getGridItemLayout}
+      style={{ flex: 1 }}
+    >
+      <SortableList<Card>
+        zoneId="library"
+        virtualization
+        style={{ flex: 1 }}
+        estimatedItemSize={48}
+        renderItem={({ item }) => (
+          <DragHandle>
+            <Text>{item.data.title}</Text>
+          </DragHandle>
+        )}
+      />
+      <SortableGrid<Card>
+        zoneId="board"
+        style={{ height: 240 }}
+        geometry={{
+          mode: 'fit',
+          rowGap: 8,
+          columnGap: 8,
+          padding: { top: 8, right: 8, bottom: 8, left: 8 },
+        }}
+        renderItem={({ item, width, height }) => (
+          <View style={{ width, height }}>
+            <DragHandle>
+              <Text>{item.data.title}</Text>
+            </DragHandle>
+          </View>
+        )}
+      />
+    </DndProvider>
+  );
+}
 ```
 
 A grid zone with `rows`, `columns` and `placements` is spatial. Add `itemSpan`
@@ -221,25 +259,17 @@ if (result.status === 'ok' && result.changed) setValue(result.value);
 - [Grids and mixed layouts](docs/mixed-layout-api.md) covers `SortableGrid`,
   spans, transfers between zones, approval and failure reasons.
 - [Grid contracts and the `GridController` API](docs/api.md) covers the shared
-  layout contract, movement policies and preview rules, plus the grid-only API
-  kept for existing consumers, which is now an adapter over the same provider.
+  layout contract, movement policies and preview rules, plus `GridController`,
+  a grid-only interface over the same provider.
 - [Contributing](CONTRIBUTING.md) lists the checks and the native test
   checklist.
 
 Runnable examples live in [`example/`](example/), including a 580-item
-`FlatList` tab and a mixed grid and list screen:
-
-```sh
-yarn install
-yarn example start
-yarn example ios     # or: yarn example android
-```
+`FlatList` tab and a mixed grid and list screen. To run them, clone the
+repository and follow
+[Run the native example](CONTRIBUTING.md#run-the-native-example).
 
 ## Status and limitations
-
-Automated verification passes 51 suites and 1,215 tests, seven
-performance-tooling tests, TypeScript, ESLint, the build, and an isolated check
-of the packed API and its types.
 
 Known gaps, stated so you can judge the risk:
 

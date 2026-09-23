@@ -92,6 +92,10 @@ Keep each change focused. Explain the previous behavior, the resulting behavior,
 
 The repository owner is `baesumin`, and the license is MIT. Remaining release work is listed under [status and limitations](README.md#status-and-limitations): a tested support matrix, the open device checks, and screen-reader announcements.
 
+## Peer dependency ranges
+
+Each lower bound in `peerDependencies` is the release that introduced an API the package calls: the v3 gesture hooks in Gesture Handler 3.0.0, the worklets package split in Reanimated 4.0.0, and `scheduleOnUI`, `scheduleOnRN` and `runOnUISync` in Worklets 0.5.0. React 19 comes with React Native 0.78. Raise a bound when the source starts using a newer API, and add a combination to the README's Verified column only after building and running it.
+
 ## Publishing a release
 
 A stable version (no hyphen) publishes as `latest`. A prerelease also publishes as `latest` while no stable version exists, because it is then the newest thing to install. Once a stable version exists, prereleases go out under `next`, so `npm install react-native-layout-dnd` keeps resolving to the last stable release.
