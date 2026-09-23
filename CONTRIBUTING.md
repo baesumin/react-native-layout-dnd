@@ -106,11 +106,20 @@ npm whoami                 # log in with `npm login` first
 npm publish --tag latest   # npm 11 requires an explicit tag for a prerelease; prepack runs the Bob build
 ```
 
-Then, on npmjs.com, open the package settings and add a GitHub Actions trusted publisher with organization `baesumin`, repository `react-native-layout-dnd` and workflow filename `release.yml`. Every later release is a tag push:
+Then connect the workflow as the package's trusted publisher, once. This needs npm 11.15.0 or newer and two-factor authentication on the account, and asks for a one-time code:
 
 ```sh
-npm version 0.1.0-alpha.1  # or edit package.json and commit
-git push --follow-tags
+npx npm@latest trust github react-native-layout-dnd \
+  --file release.yml --repo baesumin/react-native-layout-dnd --allow-publish
 ```
+
+The same setting is available on npmjs.com under the package's settings. Every later release is two commands:
+
+```sh
+npm version 0.1.0-alpha.1  # commits package.json and creates the v0.1.0-alpha.1 tag
+git push --follow-tags     # the tag starts release.yml
+```
+
+npm shows the README of the version it installs, so documentation changes reach the npm page only with the next release.
 
 The same workflow creates the GitHub release for the tag with notes generated from the commits since the previous tag. It follows the npm rule: the release is marked "Latest" unless a prerelease is published after a stable version exists, in which case it is marked as a prerelease. A version that is already on npm is not published again, so a tag pushed after a manual publish only creates the release.
