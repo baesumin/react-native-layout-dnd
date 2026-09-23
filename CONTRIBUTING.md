@@ -122,4 +122,10 @@ git push --follow-tags     # the tag starts release.yml
 
 npm shows the README of the version it installs, so documentation changes reach the npm page only with the next release.
 
+If the run for a tag fails because of the workflow itself, do not move the tag. Fix the workflow on `main` and run it by hand, which releases the version in `package.json` only when its tag already exists:
+
+```sh
+gh workflow run release.yml --ref main
+```
+
 The same workflow creates the GitHub release for the tag with notes generated from the commits since the previous tag. It follows the npm rule: the release is marked "Latest" unless a prerelease is published after a stable version exists, in which case it is marked as a prerelease. A version that is already on npm is not published again, so a tag pushed after a manual publish only creates the release.
