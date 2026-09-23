@@ -72,8 +72,8 @@ module.exports = {
 ## Installation
 
 ```sh
-yarn add react-native-layout-dnd@next
-# or: npm install react-native-layout-dnd@next
+yarn add react-native-layout-dnd
+# or: npm install react-native-layout-dnd
 ```
 
 Install the peers too if your app does not have them yet, then rebuild the
@@ -83,9 +83,10 @@ native app:
 yarn add react-native-gesture-handler react-native-reanimated react-native-worklets
 ```
 
-Prereleases are published under the `next` tag. Installing from the Git URL
-does not work, because the entry points come from a build that only runs while
-packing.
+Until `0.1.0` every release is an alpha and the default install gets the newest
+one. After the first stable release, alphas move to the `next` tag. Installing
+from the Git URL does not work, because the entry points come from a build that
+only runs while packing.
 
 ## Quick start
 

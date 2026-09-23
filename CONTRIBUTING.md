@@ -94,7 +94,7 @@ The repository owner is `baesumin`, and the license is MIT. Remaining release wo
 
 ## Publishing a release
 
-Prereleases go out under the `next` dist-tag, so `npm install react-native-layout-dnd` keeps resolving to the last stable release. A version without a hyphen publishes as `latest`.
+A stable version (no hyphen) publishes as `latest`. A prerelease also publishes as `latest` while no stable version exists, because it is then the newest thing to install. Once a stable version exists, prereleases go out under `next`, so `npm install react-native-layout-dnd` keeps resolving to the last stable release.
 
 [`release.yml`](.github/workflows/release.yml) publishes with npm trusted publishing (OIDC), so no npm token is stored in this repository. It repeats the full verification before publishing and refuses a tag that disagrees with `package.json`.
 
@@ -103,7 +103,7 @@ npm can only attach a trusted publisher to a package that already exists, so the
 ```sh
 yarn install
 npm whoami                 # log in with `npm login` first
-npm publish --tag next     # prepack runs the Bob build
+npm publish --tag latest   # npm 11 requires an explicit tag for a prerelease; prepack runs the Bob build
 ```
 
 Then, on npmjs.com, open the package settings and add a GitHub Actions trusted publisher with organization `baesumin`, repository `react-native-layout-dnd` and workflow filename `release.yml`. Every later release is a tag push:
@@ -113,4 +113,4 @@ npm version 0.1.0-alpha.1  # or edit package.json and commit
 git push --follow-tags
 ```
 
-The same workflow creates the GitHub release for the tag, marked as a prerelease when the version has a hyphen, with notes generated from the commits since the previous tag. A version that is already on npm is not published again, so a tag pushed after a manual publish only creates the release.
+The same workflow creates the GitHub release for the tag with notes generated from the commits since the previous tag. It follows the npm rule: the release is marked "Latest" unless a prerelease is published after a stable version exists, in which case it is marked as a prerelease. A version that is already on npm is not published again, so a tag pushed after a manual publish only creates the release.
