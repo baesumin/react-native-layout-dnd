@@ -3174,6 +3174,7 @@ it('keeps every session option off the root view', () => {
     onDragStart: true,
     onDragEnd: true,
     onValidationError: true,
+    onValidationChange: true,
     onDiagnostic: true,
     responseTimeoutMs: true,
     disabled: true,
@@ -3186,6 +3187,7 @@ it('keeps every session option off the root view', () => {
     canDrop: () => ({ allowed: true }),
     onDragStart: jest.fn(),
     onValidationError: jest.fn(),
+    onValidationChange: jest.fn(),
     onDiagnostic: jest.fn(),
     responseTimeoutMs: 2000,
     disabled: false,
@@ -3198,6 +3200,7 @@ it('keeps every session option off the root view', () => {
     Object.keys(sessionOptions).filter(key => key in rootOutput.props),
   ).toEqual([]);
   expect(props.onValidationError).not.toHaveBeenCalled();
+  expect(props.onValidationChange).not.toHaveBeenCalled();
 });
 
 it('cancels root geometry changes and cleans up after unmount', () => {
@@ -3564,6 +3567,45 @@ it.each(['searchBudget', 'responseTimeoutMs'] as const)(
     );
   },
 );
+
+it('publishes the current issue list of the value and adapters, including its resolution', () => {
+  const onValidationError = jest.fn();
+  const onValidationChange = jest.fn();
+  props = { ...props, onValidationError, onValidationChange };
+  render();
+  expect(onValidationChange).not.toHaveBeenCalled();
+  const clipped = {
+    code: 'invalid-geometry' as const,
+    zoneId: 'grid',
+    message: 'clipped',
+  };
+  mockRuntime.reportIssues('grid:grid', [clipped]);
+  render();
+  expect(onValidationChange).toHaveBeenLastCalledWith([clipped]);
+  props = { ...props, searchBudget: 0 };
+  render();
+  expect(onValidationChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ code: 'invalid-budget' }),
+    clipped,
+  ]);
+  props = { ...props, searchBudget: undefined };
+  render();
+  expect(onValidationChange).toHaveBeenLastCalledWith([clipped]);
+  mockRuntime.reportIssues('grid:grid', []);
+  render();
+  expect(onValidationChange).toHaveBeenLastCalledWith([]);
+  expect(onValidationChange).toHaveBeenCalledTimes(4);
+  // The existing callback still never receives an empty list.
+  expect(
+    onValidationError.mock.calls.every(([issues]) => issues.length > 0),
+  ).toBe(true);
+  // A resolved issue that comes back is reported again by both callbacks.
+  onValidationError.mockClear();
+  mockRuntime.reportIssues('grid:grid', [clipped]);
+  render();
+  expect(onValidationError).toHaveBeenLastCalledWith([clipped]);
+  expect(onValidationChange).toHaveBeenLastCalledWith([clipped]);
+});
 
 it('does not convert an invalid caller canDrop response into approval', () => {
   props = { ...props, canDrop: () => undefined as never };

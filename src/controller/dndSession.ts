@@ -104,7 +104,13 @@ export type DndSessionOptions<T> = {
   canDrop?(proposal: DndProposal<T>): DropDecision;
   onDragStart?(event: DragStartEvent): void;
   onDragEnd?(event: DndDragEndEvent<T>): void;
+  /** New issues only; it is not called when issues are resolved. */
   onValidationError?(issues: LayoutValidationIssue[]): void;
+  /**
+   * The complete current issue list whenever it changes, `[]` once every
+   * issue is resolved. Not called while the list stays empty.
+   */
+  onValidationChange?(issues: LayoutValidationIssue[]): void;
   /** Optional JS-only observation. Exceptions are ignored; omit to disable timing. */
   onDiagnostic?(event: GridDiagnosticEvent): void;
   responseTimeoutMs?: number;
@@ -324,6 +330,7 @@ function checkOptions<T>(options: DndSessionOptions<T>) {
       'onDragStart',
       'onDragEnd',
       'onValidationError',
+      'onValidationChange',
       'getGridItemLayout',
     ].some(key => {
       const callback = options[key as keyof DndSessionOptions<T>];
@@ -554,6 +561,13 @@ export class DndSessionCoordinator<T> extends SessionCore<
         if (notification && typeof options.onValidationError === 'function') {
           try {
             options.onValidationError(checked.issues);
+          } catch (error) {
+            reportCallbackError(error);
+          }
+        }
+        if (typeof options.onValidationChange === 'function') {
+          try {
+            options.onValidationChange(checked.issues);
           } catch (error) {
             reportCallbackError(error);
           }

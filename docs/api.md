@@ -55,6 +55,9 @@ API always did (the provider's `onDragSettled` timing), and zones show no
 destination indicator because neighbors move instead. Acceptance compares
 layout and revision only, so an owner that derives new item data for the
 destination zone (a dock item built from a page item) is still accepted.
+`onValidationChange` reports the current issues, `[]` once they are resolved:
+the value's own issues while it is invalid, otherwise those of its zones, handles
+and options (see [Validation issues](../README.md#validation-issues)).
 
 The provider owns the native recognizers. Handles whose `gestureRelations`
 name the same `block`, `requireToFail` and `simultaneousWith` gestures share one

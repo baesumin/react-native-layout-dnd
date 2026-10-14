@@ -237,6 +237,66 @@ it('reports an invalid grid value once with the grid API codes and keeps renderi
   expect(renderItem).toHaveBeenCalled();
 });
 
+it('publishes the current grid issues and their resolution through onValidationChange', async () => {
+  const onValidationChange = jest.fn();
+  const broken = home();
+  broken.zones[0].items.push({
+    id: 'p1',
+    data: 'dup',
+    span,
+    position: { row: 1, col: 0 },
+  });
+  await root.render(tree({ value: broken, onValidationChange }));
+  await flush();
+  expect(onValidationChange).toHaveBeenCalledTimes(1);
+  expect(onValidationChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ code: 'duplicate-id', itemId: 'p1' }),
+  ]);
+  await root.render(tree({ value: home(), onValidationChange }));
+  await flush();
+  expect(onValidationChange).toHaveBeenCalledTimes(2);
+  expect(onValidationChange).toHaveBeenLastCalledWith([]);
+  expect(onValidationError).toHaveBeenCalledTimes(1);
+});
+
+it('reports a zone issue as resolved and again when it returns', async () => {
+  const onValidationChange = jest.fn();
+  const withMissingZone = (mounted: boolean) =>
+    tree({
+      onValidationChange,
+      children: [
+        createElement(GridZoneView, { key: 'page', zoneId: 'page', geometry }),
+        createElement(GridZoneView, { key: 'dock', zoneId: 'dock', geometry }),
+        mounted
+          ? createElement(GridZoneView, {
+              key: 'missing',
+              zoneId: 'missing',
+              geometry,
+            })
+          : null,
+      ],
+    });
+  await root.render(withMissingZone(true));
+  await flush();
+  const missing = [
+    expect.objectContaining({
+      code: 'invalid-configuration',
+      zoneId: 'missing',
+    }),
+  ];
+  expect(onValidationError).toHaveBeenCalledTimes(1);
+  expect(onValidationError).toHaveBeenLastCalledWith(missing);
+  expect(onValidationChange).toHaveBeenLastCalledWith(missing);
+  await root.render(withMissingZone(false));
+  await flush();
+  expect(onValidationChange).toHaveBeenLastCalledWith([]);
+  expect(onValidationError).toHaveBeenCalledTimes(1);
+  await root.render(withMissingZone(true));
+  await flush();
+  expect(onValidationError).toHaveBeenCalledTimes(2);
+  expect(onValidationChange).toHaveBeenLastCalledWith(missing);
+});
+
 it('exposes the geometry handle of the shared provider', async () => {
   const ref: { current: GridControllerHandle | null } = { current: null };
   await root.render(tree({ ref }));

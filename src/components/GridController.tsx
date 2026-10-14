@@ -58,6 +58,7 @@ export function GridController<T>({
   onDragStart,
   onDragEnd,
   onValidationError,
+  onValidationChange,
   onDiagnostic,
   searchBudget,
   activation,
@@ -130,6 +131,61 @@ export function GridController<T>({
     [onValidationError, valueValid],
   );
 
+  // The current list: the value's own issues while it is invalid, otherwise
+  // the provider's (zone geometry, handles, options) in grid API codes.
+  const providerIssues = useRef<LayoutValidationIssue[]>([]);
+  // Both sources settle at the end of the provider's commits; publish once.
+  const validation = useRef({
+    valueIssues: converted.issues,
+    onChange: onValidationChange,
+    published: '[]',
+    queued: false,
+    active: true,
+  }).current;
+  const publishValidation = useCallback(() => {
+    if (!validation.active || validation.queued) return;
+    validation.queued = true;
+    (
+      globalThis as typeof globalThis & {
+        queueMicrotask(callback: () => void): void;
+      }
+    ).queueMicrotask(() => {
+      validation.queued = false;
+      if (!validation.active) return;
+      const current = validation.valueIssues.length
+        ? validation.valueIssues
+        : gridIssues(providerIssues.current);
+      const key = JSON.stringify(current);
+      if (key === validation.published) return;
+      validation.published = key;
+      try {
+        validation.onChange?.(current);
+      } catch (error) {
+        console.error('[LayoutDnD] Validation callback failed', error);
+      }
+    });
+  }, [validation]);
+  useEffect(() => {
+    validation.active = true;
+    return () => {
+      validation.active = false;
+    };
+  }, [validation]);
+  useEffect(() => {
+    validation.valueIssues = converted.issues;
+    validation.onChange = onValidationChange;
+    publishValidation();
+  }, [converted.issues, onValidationChange, publishValidation, validation]);
+  const handleProviderChange = useCallback(
+    (issues: LayoutValidationIssue[]) => {
+      providerIssues.current = issues;
+      // A resolved issue that comes back is new again for onValidationError.
+      if (issues.length === 0) lastProviderIssues.current = null;
+      publishValidation();
+    },
+    [publishValidation],
+  );
+
   const handleChange = useCallback(
     (next: DndValue<T>, proposal: DndProposal<T>) => {
       pendingProposal.current = proposal;
@@ -194,6 +250,7 @@ export function GridController<T>({
       onDragStart={onDragStart}
       onDragSettled={handleEnd}
       onValidationError={handleProviderIssues}
+      onValidationChange={handleProviderChange}
       onDiagnostic={onDiagnostic}
       searchBudget={searchBudget}
       activation={activation}

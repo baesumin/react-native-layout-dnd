@@ -857,6 +857,36 @@ describe('normalized list sessions', () => {
     expect(h.session.start('a')).not.toBeNull();
   });
 
+  it('reports the current issues on every change and an empty list once resolved', () => {
+    const onValidationChange = jest.fn();
+    const h = harness({ onValidationChange });
+    h.commit();
+    expect(onValidationChange).not.toHaveBeenCalled();
+    h.commit({ value: { ...h.options.value, revision: -1 } });
+    expect(onValidationChange).toHaveBeenCalledTimes(1);
+    expect(onValidationChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ code: 'invalid-revision' }),
+    ]);
+    h.commit();
+    expect(onValidationChange).toHaveBeenCalledTimes(1);
+    h.commit({ value: initial() });
+    expect(onValidationChange).toHaveBeenCalledTimes(2);
+    expect(onValidationChange).toHaveBeenLastCalledWith([]);
+    expect(h.onValidationError).toHaveBeenCalledTimes(1);
+    h.commit();
+    expect(onValidationChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a non-function onValidationChange as configuration', () => {
+    const h = harness({
+      onValidationChange: 'log' as unknown as () => void,
+    });
+    h.commit();
+    expect(h.onValidationError).toHaveBeenCalledWith([
+      expect.objectContaining({ code: 'invalid-configuration' }),
+    ]);
+  });
+
   it('rejects an explicit null search budget and recovers when the option is omitted', () => {
     const h = harness({ searchBudget: null as unknown as number });
     h.commit();

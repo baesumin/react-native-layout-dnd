@@ -251,6 +251,43 @@ const result = computeLayoutMove({
 if (result.status === 'ok' && result.changed) setValue(result.value);
 ```
 
+## Validation issues
+
+`DndProvider` and `GridController` report issues through two callbacks. In
+`DndProvider`, any issue also disables dragging until it is resolved.
+
+- `onValidationError(issues)` is called when new issues appear. It is never
+  called when they are resolved.
+- `onValidationChange(issues)` is called with the complete current list
+  whenever it changes, and with `[]` once everything is resolved. It runs after
+  the commit that changed the list has settled, so it does not see the
+  in-between states of one update.
+
+Use `onValidationChange` to show an error state that also clears itself:
+
+```tsx
+import { useState } from 'react';
+import type { LayoutValidationIssue } from 'react-native-layout-dnd';
+
+function useValidationState() {
+  const [issues, setIssues] = useState<LayoutValidationIssue[]>([]);
+  return { issues, onValidationChange: setIssues };
+}
+```
+
+What an issue means depends on where it comes from. Some codes come from more
+than one source, so read `zoneId`, `itemId` and `message` together with the code.
+
+| Source                   | Codes                                                                                                                                                                                                                                                                                                                                             | Resolved when                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| The value (data)         | `invalid-structure`, `duplicate-id` (item IDs), `invalid-dimension`, `invalid-span`, `invalid-placement`, `missing-item-span`, `span-mismatch`, `invalid-position`, `out-of-bounds`, `overlap`, `capacity-exceeded`, and for `LayoutState` also `invalid-revision`, `unknown-item`, `unplaced-item`, `duplicate-reference`, `invalid-orientation` | The app passes a corrected value                   |
+| Props and component tree | `invalid-budget`, `invalid-configuration` (provider, list or handle options, a handle outside its item, a zone component whose zone is not in the value), `invalid-geometry` for a malformed geometry object, `duplicate-id` for two components mounted for one zone                                                                              | The props or the mounted components change         |
+| Layout                   | `invalid-geometry` when a fixed geometry does not fit the laid-out zone                                                                                                                                                                                                                                                                           | The zone or the geometry changes so that cells fit |
+
+A layout issue follows the measured size of the zone. The grid checks a fixed
+geometry against the size of the same commit, so a geometry and a zone size that
+change together, as on rotation, are not reported.
+
 ## Documentation
 
 - [Lists and scrolling](docs/list-scroll-api.md) covers `DndProvider`,

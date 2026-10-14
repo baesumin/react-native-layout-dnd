@@ -63,7 +63,13 @@ export type GridControllerProps<T> = Omit<ViewProps, 'children'> & {
   onDragStart?(event: DragStartEvent): void;
   /** Fires once the drag preview has settled into its cell, or at once when nothing animates. */
   onDragEnd?(event: DragEndEvent): void;
+  /** New issues only; it is not called when issues are resolved. */
   onValidationError?(issues: ValidationIssue[]): void;
+  /**
+   * The complete current issue list whenever it changes, `[]` once every
+   * issue is resolved. Not called while the list stays empty.
+   */
+  onValidationChange?(issues: ValidationIssue[]): void;
   /** Optional JS-only observation. Exceptions are ignored; omit to disable timing. */
   onDiagnostic?(event: GridDiagnosticEvent): void;
   /** Defaults to 10,000 bounded search steps. */

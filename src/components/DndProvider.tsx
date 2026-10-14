@@ -226,6 +226,7 @@ export function DndProvider<T>({
   onDragEnd,
   onDragSettled,
   onValidationError,
+  onValidationChange,
   onDiagnostic,
   responseTimeoutMs,
   getGridItemLayout,
@@ -312,6 +313,53 @@ export function DndProvider<T>({
     },
     [reportSettled],
   );
+  // Issues of the value and options (from the coordinator) and of mounted
+  // adapters and handles (by owner), published together as one list. A new
+  // value reaches the adapters over several synchronous commits, so the list
+  // is read once they are done; intermediate lists are never published.
+  const issues = useRef(
+    new Map<string, { key: string; issues: LayoutValidationIssue[] }>(),
+  );
+  const sessionIssues = useRef<LayoutValidationIssue[]>([]);
+  const validation = useRef({
+    published: '[]',
+    queued: false,
+    onChange: onValidationChange,
+  }).current;
+  const mounted = useRef(true);
+  const publishValidation = useCallback(() => {
+    if (!mounted.current || validation.queued) return;
+    validation.queued = true;
+    (
+      globalThis as typeof globalThis & {
+        queueMicrotask(callback: () => void): void;
+      }
+    ).queueMicrotask(() => {
+      validation.queued = false;
+      if (!mounted.current) return;
+      const current = [
+        ...sessionIssues.current,
+        ...Array.from(issues.current.keys())
+          .sort()
+          .flatMap(owner => issues.current.get(owner)!.issues),
+      ];
+      const key = JSON.stringify(current);
+      if (key === validation.published) return;
+      validation.published = key;
+      try {
+        validation.onChange?.(current);
+      } catch (error) {
+        console.error('[LayoutDnD] Validation callback failed', error);
+      }
+    });
+  }, [validation]);
+  const reportSessionIssues = useCallback(
+    (next: LayoutValidationIssue[]) => {
+      sessionIssues.current = next;
+      publishValidation();
+    },
+    [publishValidation],
+  );
   const [coordinator] = useState(
     () =>
       new DndSessionCoordinator({
@@ -321,6 +369,7 @@ export function DndProvider<T>({
         onDragStart,
         onDragEnd: endSession,
         onValidationError,
+        onValidationChange: reportSessionIssues,
         onDiagnostic,
         responseTimeoutMs,
         getGridItemLayout,
@@ -380,9 +429,7 @@ export function DndProvider<T>({
   const nextHandleId = useRef(0);
   const [gestureRegistry] = useState(createDndGestureRegistry);
   const registry = useRef(new Map<object, RegisteredList>());
-  const issues = useRef(new Map<string, string>());
   const observer = useRef(onValidationError);
-  const mounted = useRef(true);
   const handlePublication = useRef({
     queued: false,
     generation: 0,
@@ -648,11 +695,12 @@ export function DndProvider<T>({
   const reportIssues = useCallback(
     (owner: string, next: LayoutValidationIssue[]) => {
       const key = JSON.stringify(next);
-      const old = issues.current.get(owner);
-      if (next.length) issues.current.set(owner, key);
+      const old = issues.current.get(owner)?.key;
+      if (next.length) issues.current.set(owner, { key, issues: next });
       else issues.current.delete(owner);
       if (!mounted.current) return;
       setRegistryInvalid(issues.current.size > 0);
+      publishValidation();
       if (next.length && old !== key) {
         coordinator.cancel('disabled');
         try {
@@ -662,7 +710,7 @@ export function DndProvider<T>({
         }
       }
     },
-    [coordinator],
+    [coordinator, publishValidation],
   );
   useLayoutEffect(() => {
     mounted.current = true;
@@ -677,6 +725,7 @@ export function DndProvider<T>({
         targetSession.set({ ...current, policyRevision: nextPolicyRevision });
     });
     observer.current = onValidationError;
+    validation.onChange = onValidationChange;
     if (
       currentConfig.current.dragAxis !== dragAxis ||
       currentConfig.current.delayMs !== activation?.delayMs
@@ -695,6 +744,7 @@ export function DndProvider<T>({
       onDragStart,
       onDragEnd: endSession,
       onValidationError,
+      onValidationChange: reportSessionIssues,
       onDiagnostic,
       responseTimeoutMs,
       getGridItemLayout,
