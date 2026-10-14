@@ -929,6 +929,37 @@ it('does not send a redundant frame signal when the prior render already include
   expect(mockMeasurementFrames.size).toBe(0);
 });
 
+it('uses the viewport of the same commit when its size changes with the props', () => {
+  viewport();
+  // Fabric answers a self-relative measureLayout synchronously from the
+  // committed tree; onLayout for that size arrives after the commit.
+  let native = { width: 200, height: 300 };
+  (output.props.ref as { current: unknown }).current = {
+    measureLayout(
+      _relative: unknown,
+      onSuccess: (x: number, y: number, width: number, height: number) => void,
+    ) {
+      onSuccess(0, 0, native.width, native.height);
+    },
+  };
+  registerZone.mockClear();
+  // Rotation: the parent passes a new size and the view is laid out with it.
+  native = { width: 300, height: 200 };
+  props = { ...props, style: { width: 300, height: 200 } };
+  render();
+  expect(flattenStyle(mockCells.get('a')!.style).width).toBe(300);
+  expect(registration().layout.entries[0].rect.width).toBe(300);
+  // The previous cross size never reached the registration.
+  expect(
+    registerZone.mock.calls.every(
+      ([entry]) => entry.layout.entries[0].rect.width === 300,
+    ),
+  ).toBe(true);
+  const before = registerZone.mock.calls.length;
+  viewport(300, 200);
+  expect(registerZone).toHaveBeenCalledTimes(before);
+});
+
 it.each(['width', 'data'] as const)(
   'cancels an obsolete measurement frame after a %s context replacement',
   change => {

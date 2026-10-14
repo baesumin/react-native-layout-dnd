@@ -108,6 +108,13 @@ the span. The component validates native dimensions with `PixelRatio` and copies
 geometry before registering it. Changed cell dimensions, gaps or padding interrupt
 an affected drag, even when the viewport has the same outer size.
 
+Validation uses the zone's size from the same commit as the geometry, read
+synchronously from the New Architecture layout before paint. A geometry that is
+derived from the window together with the zone's `style` size, as on rotation or
+a split-screen resize, is therefore checked against the new size and does not
+wait for `onLayout`. Fixed geometry that really overflows the laid-out zone is
+reported as `invalid-geometry` and unregisters the zone until it fits again.
+
 The provider keeps the source preview dimensions and pointer grip. The grid's
 destination indicator shows the resolved footprint and neighbors show the full
 candidate arrangement. Pointer mapping uses the grip as a fraction of the

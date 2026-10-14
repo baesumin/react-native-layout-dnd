@@ -20,6 +20,11 @@ import {
 import type { GridItemRenderArgs, SortableGridProps } from './dndTypes';
 import { presentationRect } from '../runtime/dndPresentation';
 import { getCellGeometry, itemRect } from '../pointer/geometry';
+import {
+  readCommittedSize,
+  sameViewSize,
+  type ViewSize,
+} from '../runtime/committedSize';
 
 function GridCellContent<T>({
   item,
@@ -191,9 +196,12 @@ export function SortableGrid<T>({
     };
   }, []);
   const ref = useAnimatedRef();
-  const [size, setSize] = useState<{ width: number; height: number } | null>(
-    null,
-  );
+  // Last known native size: onLayout, or the committed layout read below.
+  const [size, setSize] = useState<ViewSize | null>(null);
+  // Size read from the latest commit that changed size-related inputs.
+  const committedSize = useRef<ViewSize | null>(null);
+  // Key of a misfit confirmed against native layout; such cells are hidden.
+  const [clipped, setClipped] = useState<string | null>(null);
   const zone = snapshot.zone;
   const display = snapshot.display;
   const revision = snapshot.revision;
@@ -216,10 +224,45 @@ export function SortableGrid<T>({
     };
   });
   const pixelRatio = PixelRatio.get();
-  const cells =
+  const fitted =
     zone?.kind === 'grid' && size
       ? getCellGeometry(zone, geometry, size.width, size.height, pixelRatio)
       : null;
+  // When props and the view size change in one commit (rotation), `size` is
+  // still the previous one here. Fixed cells do not depend on it, so keep
+  // them mounted at their new positions; the layout effect decides fit
+  // against this commit's native size.
+  const unfitted =
+    !fitted && zone?.kind === 'grid' && size
+      ? getCellGeometry(
+          zone,
+          geometry,
+          size.width,
+          size.height,
+          pixelRatio,
+          false,
+        )
+      : null;
+  const misfitKey =
+    unfitted && size && zone?.kind === 'grid'
+      ? JSON.stringify([
+          geometry.rowGap,
+          geometry.columnGap,
+          geometry.padding.top,
+          geometry.padding.right,
+          geometry.padding.bottom,
+          geometry.padding.left,
+          unfitted.cellWidth,
+          unfitted.cellHeight,
+          zone.rows,
+          zone.columns,
+          size.width,
+          size.height,
+          pixelRatio,
+        ])
+      : null;
+  const fits = fitted !== null;
+  const cells = fitted ?? (misfitKey !== clipped ? unfitted : null);
   // Compare values so mutating a geometry object in place cannot preserve stale
   // hit-test coordinates. Registered geometry never aliases caller-owned values.
   const geometryKey = cells
@@ -268,7 +311,19 @@ export function SortableGrid<T>({
     [snapshot.items],
   );
   useLayoutEffect(() => {
-    const invalid = zone?.kind !== 'grid' || (size !== null && !measured);
+    // Fabric has laid out this commit already. A size newer than the last
+    // onLayout event re-renders synchronously, before paint, with that size.
+    // Other commits, such as drag previews, skip the native read.
+    const next = readCommittedSize(ref.current);
+    committedSize.current = next;
+    if (next && !sameViewSize(next, size)) setSize(next);
+  }, [ref, size, style, zone, geometry, measured]);
+  useLayoutEffect(() => {
+    // The re-render scheduled above validates; never mix the new props with
+    // the previous size.
+    if (committedSize.current && !sameViewSize(committedSize.current, size))
+      return;
+    const invalid = zone?.kind !== 'grid' || (size !== null && !fits);
     reportIssues(
       `grid:${zoneId}`,
       invalid
@@ -285,10 +340,12 @@ export function SortableGrid<T>({
           ]
         : [],
     );
-    if (zone?.kind !== 'grid' || !measured) {
+    if (zone?.kind !== 'grid' || !fits || !measured) {
       unregisterZone(zoneId, identity);
+      if (misfitKey) setClipped(misfitKey);
       return;
     }
+    setClipped(null);
     registerZone(
       {
         kind: 'grid',
@@ -328,6 +385,8 @@ export function SortableGrid<T>({
     ref,
     measured,
     size,
+    fits,
+    misfitKey,
     registerZone,
     unregisterZone,
     reportIssues,

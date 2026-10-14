@@ -50,6 +50,11 @@ import {
   type DndZonePresentation,
 } from '../runtime/dndPresentation';
 import type { RetainSlotsRule } from '../runtime/dndRenderStore';
+import {
+  readCommittedSize,
+  sameViewSize,
+  type ViewSize,
+} from '../runtime/committedSize';
 import type { ListItemRenderArgs, SortableListProps } from './dndTypes';
 import { useListCellMotion } from '../pointer/listCellMotion';
 
@@ -447,7 +452,12 @@ export function SortableList<T>({
     typeof itemSize === 'function' ? false : virtualized ? retainSlots : true,
   );
   const identity = useRef({}).current;
-  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  // Last known native viewport: onLayout, or the committed layout read below.
+  const [viewportSize, setViewportSize] = useState<ViewSize>({
+    width: 0,
+    height: 0,
+  });
+  const committedViewport = useRef<ViewSize | null>(null);
   const [measurementVersion, setMeasurementVersion] = useState(0);
   const zone = snapshot.zone;
   const displayZone = snapshot.display;
@@ -520,6 +530,26 @@ export function SortableList<T>({
     // frame. Its newer version must not be acknowledged by this older render.
   }, [measurements, renderedMeasurementVersion]);
   const scrollRef = useAnimatedRef<ScrollView>();
+  useLayoutEffect(() => {
+    // Fabric has laid out this commit already. A viewport newer than the last
+    // onLayout event re-renders synchronously, before paint, so cells never
+    // combine new props with the previous cross size. Other commits, such as
+    // drag previews, skip the native read.
+    const next = readCommittedSize(scrollRef.current);
+    committedViewport.current = next;
+    if (next && !sameViewSize(next, viewportSize)) setViewportSize(next);
+  }, [
+    scrollRef,
+    viewportSize,
+    style,
+    orientation,
+    virtualized,
+    itemSize,
+    estimatedItemSize,
+    gap,
+    paddingStart,
+    paddingEnd,
+  ]);
   const offset = useSharedValue(0);
   const { motion, animation, presentation, committedRevision } = runtime;
   // Virtual cells position their content with a React-committed slot offset
@@ -728,6 +758,12 @@ export function SortableList<T>({
     );
   });
   useLayoutEffect(() => {
+    // The re-render scheduled with this commit's viewport registers instead.
+    if (
+      committedViewport.current &&
+      !sameViewSize(committedViewport.current, viewportSize)
+    )
+      return;
     if (!base?.valid || !display?.valid || !validScroll || !windowing.valid) {
       unregisterZone(zoneId, identity);
       return;
@@ -771,6 +807,7 @@ export function SortableList<T>({
     virtualized,
     prepareDisplay,
     items,
+    viewportSize,
   ]);
   useLayoutEffect(
     () => () => {

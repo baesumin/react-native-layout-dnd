@@ -68,6 +68,22 @@ let mockDirty = false;
 let mockRuntime: DndRuntime;
 let mockPixelRatio = 2;
 let mockReadingStyle: Set<unknown> | null = null;
+// Size of the zone in the latest committed native tree. Fabric answers a
+// self-relative measureLayout synchronously; null models a renderer without it.
+let mockNativeSize: { width: number; height: number } | null = null;
+const mockMeasureLayout = jest.fn();
+const mockHost = {
+  measureLayout(
+    _relative: unknown,
+    onSuccess: (x: number, y: number, width: number, height: number) => void,
+    onFail: () => void,
+  ) {
+    mockMeasureLayout();
+    if (mockNativeSize)
+      onSuccess(0, 0, mockNativeSize.width, mockNativeSize.height);
+    else onFail();
+  },
+};
 const mockStyleSubscriptions: Array<{ frame: Frame; reads: Set<unknown> }> = [];
 const mockCellTiming = jest.fn((value: number) => value);
 
@@ -180,7 +196,7 @@ jest.mock('react-native', () => ({
 jest.mock('react-native-reanimated', () => ({
   __esModule: true,
   default: { View: 'Animated.View' },
-  useAnimatedRef: () => mockState({ current: null })[0],
+  useAnimatedRef: () => mockState(() => ({ current: mockHost }))[0],
   useAnimatedStyle: (get: () => unknown) => {
     const reads = new Set<unknown>();
     mockReadingStyle = reads;
@@ -408,6 +424,7 @@ beforeEach(() => {
   mockMemoCells.clear();
   registrations.clear();
   mockPixelRatio = 2;
+  mockNativeSize = null;
   mockStyleSubscriptions.length = 0;
   mockReadingStyle = null;
   const value = initialValue();
@@ -807,6 +824,112 @@ it('rejects clipped geometry and unregisters a previously usable viewport', () =
   ]);
   viewport();
   expect(registrations.size).toBe(1);
+});
+
+describe('geometry that changes with the viewport in one commit', () => {
+  // A rotation: the app derives a larger fixed geometry and the zone size from
+  // the new window and passes both in one render. onLayout for the new size
+  // arrives later, so the previous onLayout size is stale in that commit.
+  const rotated = (): ZoneGeometry => ({
+    ...(geometry() as Extract<ZoneGeometry, { mode: 'fixed' }>),
+    cellWidth: 60,
+  });
+  // 10 + 4 * 60 + 3 * 4 + 14 = 276 > 200
+  const rotatedWidth = 280;
+
+  function settled() {
+    mockNativeSize = { width: 200, height: 120 };
+    render();
+    viewport();
+    expect(registration().cells).toEqual({ cellWidth: 40, cellHeight: 30 });
+    reportIssues.mockClear();
+    unregisterZone.mockClear();
+    registerZone.mockClear();
+  }
+
+  it('validates against the size of the same commit instead of the previous onLayout', () => {
+    settled();
+    const cell = mockFrames.get('small');
+    mockNativeSize = { width: rotatedWidth, height: 120 };
+    props = { ...props, geometry: rotated() };
+    render();
+    expect(reportIssues).not.toHaveBeenCalledWith('grid:grid', [
+      expect.objectContaining({ code: 'invalid-geometry' }),
+    ]);
+    expect(unregisterZone).not.toHaveBeenCalled();
+    expect(registration().cells).toEqual({ cellWidth: 60, cellHeight: 30 });
+    expect(registerZone).toHaveBeenCalledTimes(1);
+    // Cells keep their instances and move to the new geometry.
+    expect(mockFrames.get('small')).toBe(cell);
+    expect(flattenStyle(mockCells.get('large')!.style)).toMatchObject({
+      width: 124,
+      transform: [{ translateX: 74 }, { translateY: 41 }],
+    });
+    // The late native event carries the size already in use.
+    viewport(rotatedWidth, 120);
+    expect(registerZone).toHaveBeenCalledTimes(1);
+    expect(reportIssues).not.toHaveBeenCalledWith('grid:grid', [
+      expect.objectContaining({ code: 'invalid-geometry' }),
+    ]);
+  });
+
+  it('still reports geometry that does not fit the committed size', () => {
+    settled();
+    // The window really is too small for the geometry the app passed.
+    props = { ...props, geometry: rotated() };
+    render();
+    expect(reportIssues).toHaveBeenLastCalledWith('grid:grid', [
+      expect.objectContaining({ code: 'invalid-geometry', zoneId: 'grid' }),
+    ]);
+    expect(registrations.size).toBe(0);
+    expect(mockCells.size).toBe(0);
+    mockNativeSize = { width: rotatedWidth, height: 120 };
+    viewport(rotatedWidth, 120);
+    expect(registration().cells).toEqual({ cellWidth: 60, cellHeight: 30 });
+    expect(reportIssues).toHaveBeenLastCalledWith('grid:grid', []);
+  });
+
+  it('ignores a queued onLayout from an older commit', () => {
+    settled();
+    mockNativeSize = { width: rotatedWidth, height: 120 };
+    props = { ...props, geometry: rotated() };
+    render();
+    viewport(200, 120);
+    expect(reportIssues).not.toHaveBeenCalledWith('grid:grid', [
+      expect.objectContaining({ code: 'invalid-geometry' }),
+    ]);
+    expect(unregisterZone).not.toHaveBeenCalled();
+    expect(registration().cells).toEqual({ cellWidth: 60, cellHeight: 30 });
+  });
+
+  it('registers on mount from the committed size without waiting for onLayout', () => {
+    unmount();
+    registrations.clear();
+    mockNativeSize = { width: 200, height: 120 };
+    render();
+    expect(registration().cells).toEqual({ cellWidth: 40, cellHeight: 30 });
+  });
+
+  it('does not measure again for commits that leave size inputs alone', () => {
+    settled();
+    mockMeasureLayout.mockClear();
+    mockRuntime.motion.set({ ...EMPTY_DND_MOTION, token: 7 });
+    render();
+    expect(mockMeasureLayout).not.toHaveBeenCalled();
+  });
+
+  it('falls back to onLayout when the renderer cannot measure synchronously', () => {
+    viewport();
+    props = { ...props, geometry: rotated() };
+    render();
+    // Without a committed size the stale onLayout size decides, as before.
+    expect(reportIssues).toHaveBeenLastCalledWith('grid:grid', [
+      expect.objectContaining({ code: 'invalid-geometry' }),
+    ]);
+    viewport(rotatedWidth, 120);
+    expect(registration().cells).toEqual({ cellWidth: 60, cellHeight: 30 });
+    expect(reportIssues).toHaveBeenLastCalledWith('grid:grid', []);
+  });
 });
 
 it.each([

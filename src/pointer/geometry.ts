@@ -108,6 +108,9 @@ export function getCellGeometry(
   width: number,
   height: number,
   pixelRatio = 1,
+  // false: fixed cells even when they overflow the viewport. Renderers use it
+  // to keep cells mounted until a misfit is confirmed against native layout.
+  requireFit = true,
 ): CellGeometry | null {
   'worklet';
   if (
@@ -170,6 +173,7 @@ export function getCellGeometry(
   return Number.isFinite(requiredWidth) &&
     Number.isFinite(requiredHeight) &&
     (geometry.mode !== 'fixed' ||
+      !requireFit ||
       (requiredWidth - width < pixelSize &&
         requiredHeight - height < pixelSize)) &&
     Number.isFinite(cellWidth) &&
