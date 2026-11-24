@@ -1,4 +1,4 @@
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 import { computeMove } from '../../src/engine/move';
 import { validateValue } from '../../src/engine/validation';
 import type {
@@ -34,7 +34,7 @@ function home(
 
 function move(value: GridValue<null>, position: CellPosition) {
   return computeMove({
-    movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+    movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
     value,
     itemId: 'widget',
     to: { zoneId: 'home', strategy: 'spatial', position },

@@ -37,50 +37,23 @@ function applyInsertion<T>(
   };
 }
 
-/** Shift intervening occupied slots; keep the requested target even when it was empty. */
-function insertWithinZone<T>(
+/** Trade places with the occupant of the target slot; no other item moves. */
+function exchangeSlotsWithinZone<T>(
   {
     items,
     active,
     origin,
-  }: SpatialMoveInput<T> & {
-    origin: PositionedItem<T>;
-  },
-  vacantTarget = false,
+  }: SpatialMoveInput<T> & { origin: PositionedItem<T> },
+  occupant: PositionedItem<T>,
 ): PlacementSearchResult<T> {
-  const forward = comparePositions(origin.position, active.position) < 0;
-  const start = forward ? origin.position : active.position;
-  const end = forward ? active.position : origin.position;
-  const displaced = items
-    .filter(
-      item =>
-        item.placement === 'insert' &&
-        comparePositions(item.position, start) >= 0 &&
-        comparePositions(item.position, end) <= 0,
-    )
-    .sort((left, right) =>
-      forward
-        ? comparePositions(left.position, right.position)
-        : comparePositions(right.position, left.position),
-    );
-  if (
-    !isSlotAligned(active, active.span) ||
-    !isSlotAligned(origin, active.span) ||
-    displaced.some(item => !isSlotAligned(item, active.span))
-  ) {
-    // An empty target remains usable even when larger insertion items do not
-    // share aligned slots. Only compatible slots participate in insertion.
-    if (vacantTarget)
-      return { status: 'ok', placements: [...items, active], attempts: 0 };
+  if (!isSlotAligned(origin, active.span))
     return { status: 'impossible', attempts: 1 };
-  }
-  let vacant = origin.position;
-  const moved = new Map<string, PositionedItem<T>>();
-  for (const item of displaced) {
-    moved.set(item.id, withPosition(item, vacant));
-    vacant = item.position;
-  }
-  return applyInsertion(items, active, moved, 1);
+  return applyInsertion(
+    items,
+    active,
+    new Map([[occupant.id, withPosition(occupant, origin.position)]]),
+    1,
+  );
 }
 
 /** An incoming item shifts insertion slots forward until a free slot is reached. */
@@ -137,13 +110,12 @@ function insertFromAnotherZone<T>({
   return { status: 'impossible', attempts };
 }
 
+/** Internal: rule selection sends only occupied targets here. */
 export function insertSpatialItem<T>(
   input: SpatialMoveInput<T>,
   colliders: readonly PositionedItem<T>[],
 ): PlacementSearchResult<T> {
   const { active, origin } = input;
-  if (origin && colliders.length === 0)
-    return insertWithinZone({ ...input, origin }, true);
   if (
     colliders.length !== 1 ||
     !isSlotAligned(active, active.span) ||
@@ -152,6 +124,6 @@ export function insertSpatialItem<T>(
   )
     return { status: 'impossible', attempts: 0 };
   return origin
-    ? insertWithinZone({ ...input, origin })
+    ? exchangeSlotsWithinZone({ ...input, origin }, colliders[0])
     : insertFromAnotherZone(input);
 }

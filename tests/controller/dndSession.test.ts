@@ -1235,7 +1235,7 @@ describe('mixed grid/list sessions', () => {
           ? { searchBudget: 5 }
           : setting === 'resolver'
             ? { getGridItemLayout: () => null }
-            : { movementPolicy: { rowRotation: 'full-width' } }),
+            : { movementPolicy: { rowRotation: 'disabled' } }),
       });
       expect(h.onDragEnd).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -1,7 +1,6 @@
 import {
   computeMove,
   DEFAULT_GRID_MOVEMENT_POLICY,
-  HOME_GRID_MOVEMENT_POLICY,
   resolveGridMovementPolicy,
   validateGridMovementPolicy,
   type GridMovementPolicy,
@@ -79,10 +78,10 @@ describe('declarative grid movement policies', () => {
     });
   });
 
-  it('keeps intervening items and opaque application data unchanged by default on an 11×7 canvas', () => {
+  it('keeps intervening items and opaque application data unchanged with row rotation disabled on an 11×7 canvas', () => {
     const active = item('active', 0, 0, 3, 7);
     const middle = item('middle', 4, 2, 1, 2);
-    const result = move([active, middle], 7, 0);
+    const result = move([active, middle], 7, 0, { rowRotation: 'disabled' });
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') throw new Error(result.status);
     expect(positions(result.value)).toEqual({
@@ -93,9 +92,13 @@ describe('declarative grid movement policies', () => {
     expect(result.value.zones[0].items[1]).toBe(middle);
   });
 
-  it('allows general row rotation independently of the home normalization', () => {
+  it('rotates rows by default, with the rule named, and without the adjacent normalization', () => {
     const original = [item('active', 0, 0, 3, 7), item('middle', 4, 2, 1, 2)];
-    const result = move(original, 7, 0, { rowRotation: 'full-width' });
+    const result = move(original, 7, 0);
+    expect(move(original, 7, 0, { rowRotation: 'full-width' })).toEqual(result);
+    expect(
+      move(original, 7, 0, { adjacentInsertExchange: 'disabled' }),
+    ).toEqual(result);
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') throw new Error(result.status);
     expect(positions(result.value)).toEqual({
@@ -111,14 +114,23 @@ describe('declarative grid movement policies', () => {
     });
   });
 
-  it('requires the explicit home preset to normalize a one-cell insert drag across an adjacent widget', () => {
+  it('normalizes a one-cell insert drag across an adjacent widget unless the rule is disabled', () => {
     const original = [
       item('active', 0, 1, 1, 1, 'insert'),
       item('neighbor', 0, 3, 1, 1, 'insert'),
       item('panel', 1, 0, 4, 4),
     ];
-    expect(move(original, 1, 1, undefined, 5, 4).status).toBe('impossible');
-    const result = move(original, 1, 1, HOME_GRID_MOVEMENT_POLICY, 5, 4);
+    expect(
+      move(original, 1, 1, { adjacentInsertExchange: 'disabled' }, 5, 4).status,
+    ).toBe('impossible');
+    const result = move(original, 1, 1, undefined, 5, 4);
+    // A partial policy keeps the default of every rule it omits.
+    expect(
+      move(original, 1, 1, { pointer: { cellHysteresis: 0.2 } }, 5, 4),
+    ).toEqual(result);
+    expect(move(original, 1, 1, DEFAULT_GRID_MOVEMENT_POLICY, 5, 4)).toEqual(
+      result,
+    );
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') throw new Error(result.status);
     expect(positions(result.value)).toEqual({
@@ -158,15 +170,27 @@ describe('declarative grid movement policies', () => {
     expect(exchange.status).toBe('ok');
     if (insertion.status !== 'ok' || exchange.status !== 'ok')
       throw new Error('Expected candidates');
-    expect(positions(insertion.value)).toEqual({
-      active: { row: 0, col: 2 },
-      B: { row: 0, col: 0 },
-      C: { row: 0, col: 1 },
+    // Equal aligned slots trade places under either rule.
+    for (const result of [insertion, exchange])
+      expect(positions(result.value)).toEqual({
+        active: { row: 0, col: 2 },
+        B: { row: 0, col: 1 },
+        C: { row: 0, col: 0 },
+      });
+    // The order decides once the rules disagree: an occupant off the slot grid
+    // rejects insertion and still exchanges.
+    const offGrid = [
+      item('active', 0, 0, 1, 2, 'insert'),
+      item('B', 0, 3, 1, 2, 'insert'),
+    ];
+    expect(move(offGrid, 0, 3).status).toBe('impossible');
+    const priority = move(offGrid, 0, 3, {
+      candidateOrder: ['exchange', 'insert'],
     });
-    expect(positions(exchange.value)).toEqual({
-      active: { row: 0, col: 2 },
-      B: { row: 0, col: 1 },
-      C: { row: 0, col: 0 },
+    if (priority.status !== 'ok') throw new Error(priority.status);
+    expect(positions(priority.value)).toEqual({
+      active: { row: 0, col: 3 },
+      B: { row: 0, col: 0 },
     });
     expect(
       move([item('active', 0, 0), item('B', 0, 1)], 0, 1, {

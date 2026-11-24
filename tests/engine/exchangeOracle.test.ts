@@ -1,4 +1,4 @@
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 import { computeMove } from '../../src/engine/move';
 import { validateValue } from '../../src/engine/validation';
 import type {
@@ -209,7 +209,7 @@ it.each([2, 4])(
             const to = { row, col };
             const expected = reference(zone, active, to);
             const input = {
-              movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+              movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
               value: { zones: [zone] },
               itemId: active.id,
               to: {

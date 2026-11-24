@@ -16,7 +16,7 @@ import type { LayoutLocation } from '../../src/contracts';
 import type { GridItemLayout } from '../../src/engine/layoutMove';
 import { computeListLayout } from '../../src/engine/list';
 import { createListTargetIndex } from '../../src/engine/listIndex';
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 
 type Registration = ZoneRegistration & { layoutVersion: number };
 
@@ -377,7 +377,7 @@ describe('UI prepared pointer targeting matches JS targeting', () => {
       span: { rows: 4, cols: 4 },
       placement: 'exchange',
     });
-    f.session.movementPolicy = HOME_GRID_MOVEMENT_POLICY;
+    f.session.movementPolicy = DEFAULT_GRID_MOVEMENT_POLICY;
     let previous: LayoutLocation | null = {
       kind: 'grid',
       zoneId: 'grid',

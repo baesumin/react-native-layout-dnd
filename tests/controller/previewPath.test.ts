@@ -5,7 +5,7 @@ import {
 } from '../../src/controller/dndSession';
 import type { DndProposal, DndValue } from '../../src/controller/dndState';
 import { PreviewPath } from '../../src/controller/previewPath';
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 import type { GridValue, PositionedItem } from '../../src/types';
 
 // Two 2 × 2 widgets share the top rows with a third below; apps fill the
@@ -201,7 +201,7 @@ function dndHarness(overrides: Partial<DndSessionOptions<string>> = {}) {
   const onDragEnd = jest.fn();
   let options: DndSessionOptions<string> = {
     value: layout(),
-    movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+    movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
     ...overrides,
     onChange,
     onDragEnd,
@@ -218,8 +218,8 @@ function dndHarness(overrides: Partial<DndSessionOptions<string>> = {}) {
       options = { ...options, ...patch };
       session.commit(options);
     },
-    start() {
-      const id = session.start('w1');
+    start(itemId = 'w1') {
+      const id = session.start(itemId);
       if (!id) throw new Error('Expected a started session');
       return id;
     },
@@ -265,6 +265,51 @@ describe('DndSessionCoordinator cumulative grid previews', () => {
     expect(positions(h.preview(id, 5, grid(2, 0)).candidate)).toEqual(
       fromCommitted,
     );
+  });
+
+  it('carries an app across occupied cells one exchange at a time', () => {
+    const h = dndHarness();
+    const id = h.start('a1');
+    expect(positions(h.preview(id, 1, grid(2, 3)).candidate)).toEqual({
+      ...initialPositions,
+      a1: { row: 2, col: 3 },
+      a2: { row: 2, col: 2 },
+    });
+    expect(positions(h.preview(id, 2, grid(3, 3)).candidate)).toEqual({
+      ...initialPositions,
+      a2: { row: 2, col: 2 },
+      a4: { row: 2, col: 3 },
+      a1: { row: 3, col: 3 },
+    });
+    // The same target straight from the committed layout moves a4 only.
+    h.preview(id, 3, grid(2, 2));
+    expect(positions(h.preview(id, 4, grid(3, 3)).candidate)).toEqual({
+      ...initialPositions,
+      a4: { row: 2, col: 2 },
+      a1: { row: 3, col: 3 },
+    });
+  });
+
+  it('moves nothing for an app over empty cells and moves an occupant into the cell the app was last shown in', () => {
+    const h = dndHarness();
+    const id = h.start('a1');
+    const first = h.preview(id, 1, grid(4, 0));
+    expect(first.validity).toBe('valid');
+    expect(positions(first.candidate)).toEqual({
+      ...initialPositions,
+      a1: { row: 4, col: 0 },
+    });
+    expect(positions(h.preview(id, 2, grid(4, 3)).candidate)).toEqual({
+      ...initialPositions,
+      a1: { row: 4, col: 3 },
+    });
+    expect(positions(h.preview(id, 3, grid(3, 3)).candidate)).toEqual({
+      ...initialPositions,
+      a1: { row: 3, col: 3 },
+      a4: { row: 4, col: 3 },
+    });
+    expect(h.preview(id, 4, grid(4, 0)).candidate).toBe(first.candidate);
+    expect(h.preview(id, 5, grid(2, 2)).candidate).toBe(h.value);
   });
 
   it('proposes the displayed cumulative layout from the committed origin', () => {

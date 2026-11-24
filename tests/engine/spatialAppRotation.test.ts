@@ -1,4 +1,4 @@
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 import { computeMove } from '../../src/engine/move';
 import { hasSameLayout } from '../../src/engine/sameLayout';
 import { validateValue } from '../../src/engine/validation';
@@ -36,7 +36,7 @@ function home(
 
 function move(value: GridValue<unknown>, row: number, col = 0, itemId = 'A') {
   return computeMove({
-    movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+    movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
     value,
     itemId,
     to: { zoneId: 'home', strategy: 'spatial', position: { row, col } },

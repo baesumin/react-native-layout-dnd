@@ -125,40 +125,45 @@ integer revision. Revision exhaustion is rejected rather than wrapped.
 ## Movement policies
 
 Both root and `/engine` export `DEFAULT_GRID_MOVEMENT_POLICY`,
-`HOME_GRID_MOVEMENT_POLICY`, `GridMovementPolicy`, `resolveGridMovementPolicy`,
-and `validateGridMovementPolicy`.
+`GridMovementPolicy`, `resolveGridMovementPolicy`, and
+`validateGridMovementPolicy`.
 
 ```tsx
 <GridController
   value={value}
   onChange={onChange}
-  movementPolicy={HOME_GRID_MOVEMENT_POLICY}
+  movementPolicy={{ rowRotation: 'disabled' }}
   renderItem={renderItem}
 >
   {zones}
 </GridController>
 ```
 
-Pass the same `movementPolicy` to `computeMove` when computing manually.
-The default disables home-specific adjacent insert/exchange normalization and
-full-width row rotation. The home preset explicitly enables both and preserves
-the extracted behavior. The application still assigns `placement: 'insert'`
-or `'exchange'`, grid sizes, IDs, and domain-specific permissions; library code
-does not inspect `data` to classify items. Missing placement means exchange.
+Pass the same `movementPolicy` to `computeMove` when computing manually. Every
+omitted option takes its default, also in a partial policy. The default is the
+launcher-style behavior: full-width row rotation and adjacent insert/exchange
+normalization are both on, and each can be disabled on its own. The application
+still assigns `placement: 'insert'` or `'exchange'`, grid sizes, IDs, and
+domain-specific permissions; library code does not inspect `data` to classify
+items. Missing placement means exchange.
 
-| Option                       | Meaning / default                                                      |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| `rowRotation`                | `disabled`; `full-width` enables corridor rotation                     |
-| `adjacentInsertExchange`     | `disabled`; `single-cell` enables the home compatibility rule          |
-| `candidateOrder`             | `['row-rotation', 'insert', 'exchange']`; distinct rules, at least one |
-| `pointer.cellHysteresis`     | 0.12 extra cell pitches beyond half a cell; range 0–0.5                |
-| `pointer.exchangeThreshold`  | 0.8 cell pitches; range 0.5–1                                          |
-| `pointer.boundaryHysteresis` | 4 React Native logical pixels; finite and nonnegative                  |
+| Option                       | Meaning / default                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `rowRotation`                | `full-width`: a full-width exchange item moved vertically rotates the rows it passes; `disabled` moves only what it lands on            |
+| `adjacentInsertExchange`     | `single-cell`: a 1×1 insert item dragged onto an adjacent exchange item moves that item one cell; `disabled` uses the ordinary exchange |
+| `candidateOrder`             | `['row-rotation', 'insert', 'exchange']`; distinct rules, at least one                                                                  |
+| `pointer.cellHysteresis`     | 0.12 extra cell pitches beyond half a cell; range 0–0.5                                                                                 |
+| `pointer.exchangeThreshold`  | 0.8 cell pitches; range 0.5–1                                                                                                           |
+| `pointer.boundaryHysteresis` | 4 React Native logical pixels; finite and nonnegative                                                                                   |
 
 The first applicable rule owns the result, including rejection. Failure does
 not fall through to a different move. An empty destination is allowed without
-an exchange rule. `unresolved` means the search budget ran out; `impossible`
-means the selected rule could not place the items. Neither commits partial work.
+an exchange rule and never moves another item, whichever placement the dragged
+item has. An insert item dropped on an equal-size insert item of its own zone
+trades places with it, and no item between them moves. An insert item arriving
+from another zone pushes the occupants forward to the first free slot.
+`unresolved` means the search budget ran out; `impossible` means the selected
+rule could not place the items. Neither commits partial work.
 
 The engine and pointer logic share rule selection. Preview and release use the
 same threshold-adjusted target. Policy settings are copied for each session;
@@ -172,7 +177,9 @@ stays where the user saw it: moving a widget over a second widget and then over
 a third swaps the third against the layout displayed at the second step, as
 launchers do. Returning to a target visited earlier restores exactly that
 preview, and the item's own cell always restores the committed layout. Insert
-moves are path-independent, so apps arrange the same way as before.
+moves build on the same baseline: an app dropped on another app sends that app
+to the cell the dragged app was last shown in, so dragging along a packed row
+carries the app across it one exchange at a time.
 
 The path is dropped whenever the display returns to the committed value:
 leaving every zone, entering another zone, and a rejected or impossible

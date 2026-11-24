@@ -79,7 +79,7 @@ try {
     `import assert from 'node:assert/strict';
        import {
          packItems, validateValue, validateLayoutState, fromGridValue, toGridValue,
-         DEFAULT_SEARCH_BUDGET, DEFAULT_GRID_MOVEMENT_POLICY, HOME_GRID_MOVEMENT_POLICY,
+         DEFAULT_SEARCH_BUDGET, DEFAULT_GRID_MOVEMENT_POLICY,
          resolveGridMovementPolicy, validateGridMovementPolicy, computeMove,
          createGridStateStore, respondToGridProposal, screenToContent,
          computeListLayout, computeListIndex, ListSizeCache, computeLayoutMove,
@@ -112,10 +112,9 @@ try {
 
        assert.equal(Number.isSafeInteger(DEFAULT_SEARCH_BUDGET), true);
        assert.ok(DEFAULT_SEARCH_BUDGET > 0);
-       assert.equal(DEFAULT_GRID_MOVEMENT_POLICY.adjacentInsertExchange, 'disabled');
-       assert.equal(HOME_GRID_MOVEMENT_POLICY.adjacentInsertExchange, 'single-cell');
-       assert.equal(HOME_GRID_MOVEMENT_POLICY.rowRotation, 'full-width');
-       assert.equal(validateGridMovementPolicy(HOME_GRID_MOVEMENT_POLICY).valid, true);
+       assert.equal(DEFAULT_GRID_MOVEMENT_POLICY.adjacentInsertExchange, 'single-cell');
+       assert.equal(DEFAULT_GRID_MOVEMENT_POLICY.rowRotation, 'full-width');
+       assert.equal(validateGridMovementPolicy(DEFAULT_GRID_MOVEMENT_POLICY).valid, true);
        assert.deepEqual(resolveGridMovementPolicy(), DEFAULT_GRID_MOVEMENT_POLICY);
        assert.deepEqual(screenToContent({ x: 30, y: 90 }, {
          viewport: { source: 'measured', space: 'screen', revision: 4, timestampMs: 100,
@@ -293,15 +292,15 @@ try {
          ] }] };
        const homeInput = { value: homeValue, itemId: 'active',
          to: { kind: 'grid', zoneId: 'home', position: { row: 1, col: 1 } } };
-       assert.equal(computeLayoutMove(homeInput).status, 'impossible');
-       const homeMove = computeLayoutMove({ ...homeInput, movementPolicy: HOME_GRID_MOVEMENT_POLICY });
+       assert.equal(computeLayoutMove({ ...homeInput,
+         movementPolicy: { adjacentInsertExchange: 'disabled' } }).status, 'impossible');
+       const homeMove = computeLayoutMove(homeInput);
        assert.equal(homeMove.status, 'ok');
        assert.deepEqual(homeMove.to, { kind: 'grid', zoneId: 'home', position: { row: 4, col: 1 } });
        const legacyHomeValue = toGridValue(homeValue);
        assert.equal(legacyHomeValue.valid, true);
        const legacyHomeMove = computeMove({ value: legacyHomeValue.value, itemId: 'active',
-         to: { strategy: 'spatial', zoneId: 'home', position: { row: 1, col: 1 } },
-         movementPolicy: HOME_GRID_MOVEMENT_POLICY });
+         to: { strategy: 'spatial', zoneId: 'home', position: { row: 1, col: 1 } } });
        assert.equal(legacyHomeMove.status, 'ok');
        assert.deepEqual(homeMove.value.zones[0].placements.map(item => [item.itemId, item.position]),
          legacyHomeMove.value.zones[0].items.map(item => [item.id, item.position]));
@@ -373,7 +372,7 @@ try {
     `import {
        packItems, validateLayoutState, fromGridValue, toGridValue, computeMove,
        createGridStateStore, respondToGridProposal, screenToContent,
-       DEFAULT_SEARCH_BUDGET, DEFAULT_GRID_MOVEMENT_POLICY, HOME_GRID_MOVEMENT_POLICY,
+       DEFAULT_SEARCH_BUDGET, DEFAULT_GRID_MOVEMENT_POLICY,
        type CellSpan, type DndItem, type LayoutState, type MoveProposal,
        type ProposalResponse, type GridValue, type GridProposal, type GridMovementPolicy,
        type RectMeasurement, type ZoneCoordinateContext,
@@ -432,12 +431,12 @@ try {
        void label;
      }
      const budget: number = DEFAULT_SEARCH_BUDGET;
-     const policies: GridMovementPolicy[] = [DEFAULT_GRID_MOVEMENT_POLICY, HOME_GRID_MOVEMENT_POLICY];
+     const policies: GridMovementPolicy[] = [DEFAULT_GRID_MOVEMENT_POLICY, { rowRotation: 'disabled' }];
      void budget;
      void policies;
      const store = createGridStateStore(grid);
      const moved = computeMove({ value: store.getSnapshot(), itemId: 'a',
-       movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+       movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
        to: { zoneId: 'board', strategy: 'spatial', position: { row: 1, col: 1 } } });
      if (moved.status === 'ok' && moved.value.revision !== undefined) {
        const proposal: GridProposal<typeof item.data> = { sessionId: 'grid', itemId: 'a',
@@ -494,7 +493,7 @@ try {
      const descriptor: GridItemLayout = { span: { rows: 2, cols: 1 }, placement: 'exchange' };
      const gridMove = computeLayoutMove({ value: layout, itemId: 'a',
        to: { kind: 'grid', zoneId: 'board', position: { row: 0, col: 0 } },
-       gridItem: descriptor, movementPolicy: HOME_GRID_MOVEMENT_POLICY, searchBudget: 100 });
+       gridItem: descriptor, movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY, searchBudget: 100 });
      if (gridMove.status === 'ok') {
        const movedLabel: string = gridMove.value.items[0]!.data.label;
        void movedLabel;

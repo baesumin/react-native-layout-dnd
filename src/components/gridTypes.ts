@@ -76,7 +76,7 @@ export type GridControllerProps<T> = Omit<ViewProps, 'children'> & {
   searchBudget?: number;
   /** Defaults to a 250ms long press. */
   activation?: { delayMs: number };
-  /** Generic rules by default; opt into HOME_GRID_MOVEMENT_POLICY for home compatibility. */
+  /** Omitted rules use DEFAULT_GRID_MOVEMENT_POLICY; each rule can be disabled. */
   movementPolicy?: GridMovementPolicy;
   motion?: GridMotionConfig;
   responseTimeoutMs?: number;

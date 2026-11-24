@@ -140,11 +140,11 @@ equal the zone's `itemSpan`.
 
 `DndProvider` adds:
 
-| Prop                                             | Behavior                                                                                    |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `getGridItemLayout({item, from, target, value})` | Returns `{span: {rows, cols}, placement?: 'insert' \| 'exchange'}` or `null`                |
-| `movementPolicy`                                 | Existing generic grid policy; explicitly pass `HOME_GRID_MOVEMENT_POLICY` for home behavior |
-| `searchBudget`                                   | Positive safe integer; defaults to 10,000 bounded search steps                              |
+| Prop                                             | Behavior                                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `getGridItemLayout({item, from, target, value})` | Returns `{span: {rows, cols}, placement?: 'insert' \| 'exchange'}` or `null` |
+| `movementPolicy`                                 | Grid movement policy; omitted rules use `DEFAULT_GRID_MOVEMENT_POLICY`       |
+| `searchBudget`                                   | Positive safe integer; defaults to 10,000 bounded search steps               |
 
 The resolver is evaluated once per grid destination at drag start. Its output
 is copied and shared by pointer targeting and engine calculation. Keep its
@@ -168,7 +168,7 @@ placement rules determine whether occupants can be rearranged. The engine does
 not silently move a destination occupant into the source list.
 
 The existing pointer hysteresis and exchange thresholds are reused, including
-the home policy. Grid padding does not accept drops. The engine's final resolved
+the movement policy. Grid padding does not accept drops. The engine's final resolved
 placement is checked against the current measured viewport and provider bounds,
 including cases where an exchange resolves to a different anchor.
 

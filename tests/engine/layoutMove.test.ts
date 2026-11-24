@@ -10,7 +10,6 @@ import {
 } from '../../src/engine/layoutMove';
 import type { LayoutMoveInput } from '../../src/engine/layoutMove';
 import { validateLayoutState } from '../../src/engine/layoutState';
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 
 function state(): LayoutState<object> {
   return {
@@ -495,8 +494,8 @@ describe('computeLayoutMove mixed grid and list moves', () => {
       ]),
     ).toEqual([
       ['A', 2],
-      ['B', 0],
-      ['C', 1],
+      ['B', 1],
+      ['C', 0],
     ]);
     expect(
       grid(exchanged.value).placements.map(item => [
@@ -512,7 +511,7 @@ describe('computeLayoutMove mixed grid and list moves', () => {
     expect(exchanged.attempts).toBe(1);
   });
 
-  it('keeps neutral and HOME policies distinct and reports the actual normalized destination', () => {
+  it('normalizes an adjacent insert drag unless the rule is disabled and reports the actual destination', () => {
     const value = gridState(
       [
         placement('active', 0, 1, 1, 1, 'insert'),
@@ -531,12 +530,14 @@ describe('computeLayoutMove mixed grid and list moves', () => {
         position: { row: 1, col: 1 },
       },
     };
-    expect(computeLayoutMove(input).status).toBe('impossible');
-    const result = computeLayoutMove({
-      ...input,
-      movementPolicy: HOME_GRID_MOVEMENT_POLICY,
-    });
-    if (result.status !== 'ok') throw new Error('Expected home normalization');
+    expect(
+      computeLayoutMove({
+        ...input,
+        movementPolicy: { adjacentInsertExchange: 'disabled' },
+      }).status,
+    ).toBe('impossible');
+    const result = computeLayoutMove(input);
+    if (result.status !== 'ok') throw new Error('Expected normalization');
     expect(result.to).toEqual({
       kind: 'grid',
       zoneId: 'grid',

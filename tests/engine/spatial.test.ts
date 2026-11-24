@@ -1,4 +1,4 @@
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 import type { PlacementSearchResult } from '../../src/engine/search';
 import {
   resolveSpatialMove,
@@ -32,7 +32,7 @@ function move(
   options: Partial<SpatialMoveInput<null>> = {},
 ) {
   return resolveSpatialMove({
-    movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+    movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
     origin,
     items,
     active: { ...origin, position: { row, col } },
@@ -316,7 +316,7 @@ describe('spatial region exchange', () => {
 });
 
 describe('spatial insertion', () => {
-  test('forward insertion preserves the relative order of the other apps', () => {
+  test('dropping an app on a later app trades their places and leaves the apps between', () => {
     const result = move(
       app('A', 0, 0),
       [app('D', 0, 3), app('B', 0, 1), app('C', 0, 2)],
@@ -326,15 +326,15 @@ describe('spatial insertion', () => {
     );
     expect(positions(result)).toEqual({
       D: { row: 0, col: 3 },
-      B: { row: 0, col: 0 },
-      C: { row: 0, col: 1 },
+      B: { row: 0, col: 1 },
+      C: { row: 0, col: 0 },
       A: { row: 0, col: 2 },
     });
     expect(result).toMatchObject({ attempts: 1 });
     expectValid(result, 1, 4);
   });
 
-  test('backward insertion shifts the intervening apps forward', () => {
+  test('dropping an app on an earlier app trades their places and leaves the apps between', () => {
     const result = move(
       app('D', 0, 3),
       [app('A', 0, 0), app('B', 0, 1), app('C', 0, 2)],
@@ -344,33 +344,37 @@ describe('spatial insertion', () => {
     );
     expect(positions(result)).toEqual({
       A: { row: 0, col: 0 },
-      B: { row: 0, col: 2 },
-      C: { row: 0, col: 3 },
+      B: { row: 0, col: 3 },
+      C: { row: 0, col: 2 },
       D: { row: 0, col: 1 },
     });
     expectValid(result, 1, 4);
   });
 
-  test('insertion skips deliberate holes and fixed widgets, including across a row boundary', () => {
+  test('trading places across a row boundary leaves holes, a fixed widget and the app between untouched', () => {
     const fixed = item('Widget', 0, 2, 1, 2);
+    const between = app('B', 1, 0);
     const result = move(
       app('A', 0, 0),
-      [fixed, app('B', 1, 0), app('C', 1, 2)],
+      [fixed, between, app('C', 1, 2)],
       1,
       2,
       { rows: 2, columns: 4 },
     );
     expect(positions(result)).toEqual({
       Widget: { row: 0, col: 2 },
-      B: { row: 0, col: 0 },
-      C: { row: 1, col: 0 },
+      B: { row: 1, col: 0 },
+      C: { row: 0, col: 0 },
       A: { row: 1, col: 2 },
     });
-    if (result.status === 'ok') expect(result.placements[0]).toBe(fixed);
+    if (result.status === 'ok') {
+      expect(result.placements[0]).toBe(fixed);
+      expect(result.placements[1]).toBe(between);
+    }
     expectValid(result, 2, 4);
   });
 
-  test('a larger insertion span uses occupied equal-size aligned slots', () => {
+  test('a larger insertion span trades places with an equal-size aligned occupant', () => {
     const result = move(
       app('A', 0, 0, 2, 2),
       [app('B', 0, 2, 2, 2), app('C', 2, 0, 2, 2)],
@@ -379,27 +383,37 @@ describe('spatial insertion', () => {
       { rows: 4, columns: 4 },
     );
     expect(positions(result)).toEqual({
-      B: { row: 0, col: 0 },
-      C: { row: 0, col: 2 },
+      B: { row: 0, col: 2 },
+      C: { row: 0, col: 0 },
       A: { row: 2, col: 0 },
     });
     expectValid(result, 4, 4);
   });
 
-  test('moving an app into an empty slot shifts intervening apps and keeps the requested slot', () => {
-    const result = move(app('A', 0, 0), [app('B', 0, 1), app('C', 0, 2)], 1, 2);
+  test('moving an app into an empty slot leaves the intervening apps in place', () => {
+    const others = [app('B', 0, 1), app('C', 0, 2)];
+    const result = move(app('A', 0, 0), others, 1, 2);
     expect(positions(result)).toEqual({
-      B: { row: 0, col: 0 },
-      C: { row: 0, col: 1 },
+      B: { row: 0, col: 1 },
+      C: { row: 0, col: 2 },
       A: { row: 1, col: 2 },
     });
-    expect(result).toMatchObject({ attempts: 1 });
+    expect(result).toMatchObject({ attempts: 0 });
+    if (result.status === 'ok') {
+      expect(result.placements[0]).toBe(others[0]);
+      expect(result.placements[1]).toBe(others[1]);
+    }
   });
 
-  test('a different insertion span between source and target rejects the whole rotation', () => {
-    expect(
-      move(app('A', 0, 0), [app('Wide', 0, 1, 1, 2), app('B', 1, 0)], 1, 0),
-    ).toEqual({ status: 'impossible', attempts: 1 });
+  test('a different insertion span between source and target stays out of the exchange', () => {
+    const wide = app('Wide', 0, 1, 1, 2);
+    const result = move(app('A', 0, 0), [wide, app('B', 1, 0)], 1, 0);
+    expect(positions(result)).toEqual({
+      Wide: { row: 0, col: 1 },
+      B: { row: 0, col: 0 },
+      A: { row: 1, col: 0 },
+    });
+    if (result.status === 'ok') expect(result.placements[0]).toBe(wide);
   });
 
   test('a partially overlapping target is not interpreted as an insertion slot', () => {

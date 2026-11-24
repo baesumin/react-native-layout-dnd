@@ -3510,7 +3510,7 @@ it.each(['policy', 'budget', 'mapper', 'timeout'] as const)(
     props = {
       ...props,
       ...(setting === 'policy'
-        ? { movementPolicy: { rowRotation: 'full-width' } }
+        ? { movementPolicy: { rowRotation: 'disabled' } }
         : setting === 'budget'
           ? { searchBudget: 5 }
           : setting === 'timeout'
@@ -3534,8 +3534,8 @@ it('keeps the activation configuration version for an equivalent policy object',
   props = {
     ...props,
     movementPolicy: {
-      rowRotation: 'disabled',
-      adjacentInsertExchange: 'disabled',
+      rowRotation: 'full-width',
+      adjacentInsertExchange: 'single-cell',
     },
   };
   render();

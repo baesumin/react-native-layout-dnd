@@ -87,7 +87,6 @@ export type { HandleViewProps } from './components/handleViewProps';
 export { DEFAULT_ACTIVATION_DELAY_MS, DEFAULT_SEARCH_BUDGET } from './defaults';
 export {
   DEFAULT_GRID_MOVEMENT_POLICY,
-  HOME_GRID_MOVEMENT_POLICY,
   resolveGridMovementPolicy,
   validateGridMovementPolicy,
 } from './engine/movementPolicy';

@@ -4,9 +4,9 @@ export type GridMoveCandidate = 'row-rotation' | 'insert' | 'exchange';
 
 /** Declarative configuration shared by the JS engine and UI worklets. */
 export type GridMovementPolicy = {
-  /** Full-width exchange items may rotate every item in their vertical corridor. */
+  /** Full-width exchange items rotate every item in their vertical corridor. Default full-width. */
   rowRotation?: 'disabled' | 'full-width';
-  /** Home compatibility: a one-cell insert item can pull an adjacent exchange item. */
+  /** A one-cell insert item pulls an adjacent exchange item one cell. Default single-cell. */
   adjacentInsertExchange?: 'disabled' | 'single-cell';
   /** First applicable rule wins. Rejection never falls through to another rule. */
   candidateOrder?: readonly GridMoveCandidate[];
@@ -35,25 +35,17 @@ const DEFAULT_CANDIDATES: readonly GridMoveCandidate[] = Object.freeze([
   'exchange',
 ]);
 
-/** Neutral placement rules; caller data and item size never imply home behavior. */
+/** Launcher-style rules, each switchable; caller data never selects a rule. */
 export const DEFAULT_GRID_MOVEMENT_POLICY: ResolvedGridMovementPolicy =
   Object.freeze({
-    rowRotation: 'disabled',
-    adjacentInsertExchange: 'disabled',
+    rowRotation: 'full-width',
+    adjacentInsertExchange: 'single-cell',
     candidateOrder: DEFAULT_CANDIDATES,
     pointer: Object.freeze({
       cellHysteresis: 0.12,
       exchangeThreshold: 0.8,
       boundaryHysteresis: 4,
     }),
-  });
-
-/** Explicit compatibility with the extracted home grid's reversible movements. */
-export const HOME_GRID_MOVEMENT_POLICY: ResolvedGridMovementPolicy =
-  Object.freeze({
-    ...DEFAULT_GRID_MOVEMENT_POLICY,
-    rowRotation: 'full-width',
-    adjacentInsertExchange: 'single-cell',
   });
 
 /** Copy configuration when starting a session so later caller edits cannot change it. */

@@ -64,7 +64,6 @@ export type { GridProposal, RevisionedGridValue } from '../types';
 export { computeMove } from './move';
 export {
   DEFAULT_GRID_MOVEMENT_POLICY,
-  HOME_GRID_MOVEMENT_POLICY,
   resolveGridMovementPolicy,
   validateGridMovementPolicy,
 } from './movementPolicy';

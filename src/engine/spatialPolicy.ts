@@ -7,9 +7,13 @@ import { normalizeAppWidgetMove } from './spatialAppRotation';
 /** Shared rule selection only: no packing, search, or caller callbacks on the UI thread. */
 export function selectSpatialMove<T>(input: SpatialMoveInput<T>) {
   'worklet';
+  // Callers may pass a partial policy: every omitted rule takes its default.
   const policy = input.movementPolicy ?? DEFAULT_GRID_MOVEMENT_POLICY;
+  const rowRotation =
+    policy.rowRotation ?? DEFAULT_GRID_MOVEMENT_POLICY.rowRotation;
   const move =
-    policy.adjacentInsertExchange === 'single-cell'
+    (policy.adjacentInsertExchange ??
+      DEFAULT_GRID_MOVEMENT_POLICY.adjacentInsertExchange) === 'single-cell'
       ? (normalizeAppWidgetMove(input) ?? input)
       : input;
   const { active, origin, items, columns } = move;
@@ -20,7 +24,7 @@ export function selectSpatialMove<T>(input: SpatialMoveInput<T>) {
     DEFAULT_GRID_MOVEMENT_POLICY.candidateOrder) {
     if (
       candidate === 'row-rotation' &&
-      policy.rowRotation === 'full-width' &&
+      rowRotation === 'full-width' &&
       origin &&
       active.placement !== 'insert' &&
       active.span.cols === columns &&
@@ -33,7 +37,8 @@ export function selectSpatialMove<T>(input: SpatialMoveInput<T>) {
     if (
       candidate === 'insert' &&
       active.placement === 'insert' &&
-      (origin !== undefined || colliders.length > 0) &&
+      // An empty target is a vacancy for every placement: nothing else moves.
+      colliders.length > 0 &&
       colliders.every(item => item.placement === 'insert')
     ) {
       kind = candidate;

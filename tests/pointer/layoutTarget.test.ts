@@ -17,7 +17,7 @@ import { readPointerTarget } from '../../src/pointer/geometry';
 import type { GridLocation, GridPlacement } from '../../src/contracts';
 import type { GridItemLayout } from '../../src/engine/layoutMove';
 import { computeListLayout } from '../../src/engine/list';
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 
 function gridTarget(row: number, col: number, zoneId = 'grid'): GridLocation {
   return { kind: 'grid', zoneId, position: { row, col } };
@@ -454,7 +454,7 @@ describe('mixed layout pointer targets', () => {
           f.state,
           f.registrations,
           f.recipes,
-          HOME_GRID_MOVEMENT_POLICY,
+          DEFAULT_GRID_MOVEMENT_POLICY,
           gridTarget(1, 0),
         ),
       ).toEqual(gridTarget(distance > 0.8 ? 0 : 1, 0));
@@ -505,7 +505,7 @@ describe('mixed layout pointer targets', () => {
       validity: 'valid',
       visible: true,
       destination: null,
-      movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+      movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
     };
     let previous: GridLocation | null = gridTarget(1, 0);
     for (const distance of [0.2, 0.79, 0.801, 1.2, 0.81, 0.5, 0.19]) {
@@ -519,7 +519,7 @@ describe('mixed layout pointer targets', () => {
         f.state,
         f.registrations,
         f.recipes,
-        HOME_GRID_MOVEMENT_POLICY,
+        DEFAULT_GRID_MOVEMENT_POLICY,
         previous,
       );
       expect(actual).toEqual(

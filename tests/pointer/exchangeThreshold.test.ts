@@ -1,7 +1,4 @@
-import {
-  DEFAULT_GRID_MOVEMENT_POLICY,
-  HOME_GRID_MOVEMENT_POLICY,
-} from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 import { readPointerTarget } from '../../src/pointer/geometry';
 import {
   EMPTY_MOTION,
@@ -65,7 +62,7 @@ function dragging(
   const y = measured.rect.y + active.position.row * (cellHeight + rowGap);
   const motion: UiMotion = {
     ...EMPTY_MOTION,
-    movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+    movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
     phase: 'dragging',
     token: 1,
     seq: 1,
@@ -401,7 +398,7 @@ describe('distance threshold for spatial region exchanges', () => {
       expect(waiting.target).toEqual(motion.target);
       expect(
         computeMove({
-          movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+          movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
           value,
           itemId: 'active',
           to: waiting.target!,
@@ -417,7 +414,7 @@ describe('distance threshold for spatial region exchanges', () => {
         position: { row: originRow + direction, col: 1 },
       });
       const proposed = computeMove({
-        movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+        movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
         value,
         itemId: 'active',
         to: preview.target!,
@@ -447,7 +444,7 @@ describe('distance threshold for spatial region exchanges', () => {
       expect(release).toEqual(preview);
       expect(
         computeMove({
-          movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+          movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
           value,
           itemId: 'active',
           to: release.target!,
@@ -489,7 +486,7 @@ describe('distance threshold for spatial region exchanges', () => {
         const absolute = pointer(1, direction * distance);
         const preview = readPointerTarget(current, ...absolute);
         const proposed = computeMove({
-          movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+          movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
           value,
           itemId: 'active',
           to: preview.target!,
@@ -524,7 +521,7 @@ describe('distance threshold for spatial region exchanges', () => {
         expect(release.target).toEqual(preview.target);
         expect(
           computeMove({
-            movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+            movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
             value,
             itemId: 'active',
             to: release.target!,
@@ -558,7 +555,7 @@ describe('distance threshold for spatial region exchanges', () => {
           ...pointer(1, direction * distance),
         );
         const proposed = computeMove({
-          movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+          movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
           value,
           itemId: 'active',
           to: preview.target!,
@@ -577,7 +574,7 @@ describe('distance threshold for spatial region exchanges', () => {
       expect(returned.target).toEqual(motion.target);
       expect(
         computeMove({
-          movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+          movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
           value,
           itemId: 'active',
           to: returned.target!,
@@ -589,13 +586,13 @@ describe('distance threshold for spatial region exchanges', () => {
 });
 
 describe('shared configurable pointer and movement policies', () => {
-  it('does not delay a neutral full-width move over an untouched intermediate item', () => {
+  it('does not delay a full-width move over an untouched intermediate item with row rotation disabled', () => {
     const { motion, pointer } = dragging(
       [item('active', 0, 0, 2, 7, 'exchange'), item('middle', 2, 3)],
       9,
       7,
     );
-    motion.movementPolicy = DEFAULT_GRID_MOVEMENT_POLICY;
+    motion.movementPolicy = { rowRotation: 'disabled' };
     const preview = readPointerTarget(motion, ...pointer(0, 2.7));
     expect(preview.target).toMatchObject({ position: { row: 3, col: 0 } });
     const result = computeMove({

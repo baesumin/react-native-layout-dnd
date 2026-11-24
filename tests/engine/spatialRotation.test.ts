@@ -1,4 +1,4 @@
-import { HOME_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
+import { DEFAULT_GRID_MOVEMENT_POLICY } from '../../src/engine/movementPolicy';
 import { computeMove } from '../../src/engine/move';
 import { hasSameLayout } from '../../src/engine/sameLayout';
 import { validateValue } from '../../src/engine/validation';
@@ -34,7 +34,7 @@ function home(
 
 function move(value: GridValue<unknown>, row: number, col = 0) {
   return computeMove({
-    movementPolicy: HOME_GRID_MOVEMENT_POLICY,
+    movementPolicy: DEFAULT_GRID_MOVEMENT_POLICY,
     value,
     itemId: 'A',
     to: { zoneId: 'home', strategy: 'spatial', position: { row, col } },
@@ -217,7 +217,7 @@ describe('full-width widget row rotation', () => {
     expect(result.value.zones[0].items[1]).toBe(middle);
   });
 
-  it('keeps app insertion anchored to the requested empty slot', () => {
+  it('places an app in the requested empty slot without moving its neighbors', () => {
     const result = move(
       home([app('first', 0, 0), app('A', 0, 1), app('last', 0, 2)]),
       0,
@@ -228,11 +228,11 @@ describe('full-width widget row rotation', () => {
     expect(positions(result.value)).toEqual({
       first: { row: 0, col: 0 },
       A: { row: 0, col: 3 },
-      last: { row: 0, col: 1 },
+      last: { row: 0, col: 2 },
     });
   });
 
-  it('respects explicit insertion for a full-width item instead of rotating intermediate rows', () => {
+  it('places a full-width insert item in empty rows instead of rotating intermediate rows', () => {
     const result = move(
       home(
         [item('A', 0, 0, 1, 4, 'insert'), item('B', 2, 0, 1, 4, 'insert')],
@@ -244,7 +244,7 @@ describe('full-width widget row rotation', () => {
     if (result.status !== 'ok') throw new Error(result.status);
     expect(positions(result.value)).toEqual({
       A: { row: 3, col: 0 },
-      B: { row: 0, col: 0 },
+      B: { row: 2, col: 0 },
     });
   });
 });
