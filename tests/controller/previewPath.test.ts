@@ -235,6 +235,146 @@ function dndHarness(overrides: Partial<DndSessionOptions<string>> = {}) {
   };
 }
 
+// A full-width widget above one row of apps, as on a launcher page.
+function hopLayout(revision = 0): LayoutState<string> {
+  const app = (itemId: string, col: number) => ({
+    itemId,
+    position: { row: 4, col },
+    span: { rows: 1, cols: 1 },
+    placement: 'insert' as const,
+  });
+  return {
+    revision,
+    items: ['mail', 'a', 'b', 'c', 'board'].map(id => ({ id, data: id })),
+    zones: [
+      {
+        id: 'home',
+        kind: 'grid',
+        rows: 6,
+        columns: 4,
+        placements: [
+          {
+            itemId: 'mail',
+            position: { row: 0, col: 0 },
+            span: { rows: 4, cols: 4 },
+            placement: 'exchange',
+          },
+          app('a', 0),
+          app('b', 1),
+          app('c', 2),
+          app('board', 3),
+        ],
+      },
+    ],
+  };
+}
+
+// The app row has hopped over the widget, which moved one row down.
+const hopped = {
+  mail: { row: 1, col: 0 },
+  a: { row: 0, col: 0 },
+  b: { row: 0, col: 1 },
+  c: { row: 0, col: 2 },
+  board: { row: 0, col: 3 },
+};
+
+describe('DndSessionCoordinator preview hold', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('keeps the hop while the pointer stays on the widget that moved under it', () => {
+    const h = dndHarness({ value: hopLayout() });
+    const id = h.start('board');
+    const first = h.preview(id, 1, grid(3, 3));
+    expect(positions(first.candidate)).toEqual(hopped);
+    // Each of these cells, computed from the hopped layout, would read as a
+    // drag back onto the widget and restore the committed layout.
+    let seq = 1;
+    for (const [row, col] of [
+      [2, 3],
+      [1, 3],
+      [2, 1],
+      [4, 0],
+    ]) {
+      const next = h.preview(id, ++seq, grid(row, col));
+      expect(next.validity).toBe('valid');
+      expect(next.candidate).toBe(first.candidate);
+      expect(next.target).toEqual(grid(row, col));
+    }
+    expect(positions(h.preview(id, ++seq, grid(0, 3)).candidate)).toEqual(
+      hopped,
+    );
+  });
+
+  it('proposes the held preview on release', () => {
+    const h = dndHarness({ value: hopLayout(7) });
+    const id = h.start('board');
+    const shown = h.preview(id, 1, grid(3, 3)).candidate;
+    h.preview(id, 2, grid(2, 3));
+    h.session.release(id, 3, grid(1, 3));
+    const proposal = h.proposal();
+    expect(proposal.value).toBe(shown);
+    expect(proposal).toMatchObject({
+      itemId: 'board',
+      baseRevision: 7,
+      from: grid(4, 3),
+      to: grid(0, 3),
+    });
+  });
+
+  it('restores the committed layout at the own cell and ends the hold outside the widget', () => {
+    const h = dndHarness({ value: hopLayout() });
+    const id = h.start('board');
+    h.preview(id, 1, grid(3, 3));
+    h.preview(id, 2, grid(2, 3));
+    expect(h.preview(id, 3, grid(4, 3)).candidate).toBe(h.value);
+    h.preview(id, 4, grid(3, 3));
+    // An empty cell below the moved widget places the app alone.
+    expect(positions(h.preview(id, 5, grid(5, 3)).candidate)).toEqual({
+      ...hopped,
+      board: { row: 5, col: 3 },
+    });
+  });
+
+  it('undoes the hop once when the app is dragged back into the widget from above', () => {
+    const h = dndHarness({ value: hopLayout() });
+    const id = h.start('board');
+    h.preview(id, 1, grid(3, 3));
+    expect(positions(h.preview(id, 2, grid(0, 3)).candidate)).toEqual(hopped);
+    let seq = 2;
+    for (const row of [1, 2, 3, 4])
+      expect(h.preview(id, ++seq, grid(row, 3)).candidate).toBe(h.value);
+  });
+
+  it('keeps the hold across a recommit that changes only item data', () => {
+    const h = dndHarness({ value: hopLayout() });
+    const id = h.start('board');
+    h.preview(id, 1, grid(3, 3));
+    const fresh = { ...hopLayout(), items: hopLayout().items };
+    h.commit({ value: fresh });
+    expect(h.session.getSnapshot().phase).toBe('dragging');
+    const next = h.preview(id, 2, grid(2, 3)).candidate!;
+    expect(positions(next)).toEqual(hopped);
+    expect(next.items).toBe(fresh.items);
+  });
+
+  it('does not hold a larger item, whose target is an anchor and not the pointer cell', () => {
+    const h = dndHarness({ value: hopLayout() });
+    const id = h.start('mail');
+    const down = h.preview(id, 1, grid(1, 0));
+    expect(positions(down.candidate)).toEqual(hopped);
+    expect(h.preview(id, 2, grid(2, 0)).candidate).not.toBe(down.candidate);
+  });
+});
+
 describe('DndSessionCoordinator cumulative grid previews', () => {
   beforeEach(() => {
     jest.useFakeTimers();

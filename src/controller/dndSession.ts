@@ -37,6 +37,7 @@ import { layoutLocation, sameLayoutLocation } from './locations';
 import { PreviewPath } from './previewPath';
 import {
   type CandidateResult,
+  type PreviewHold,
   SessionCore,
   validatedDecision,
 } from './sessionCore';
@@ -129,6 +130,7 @@ type ActiveSession<T> = DragStartEvent & {
   target: LayoutLocation | null;
   /** Same-zone grid previews the next candidate builds on. */
   path: PreviewPath<LayoutLocation, LayoutState<T>>;
+  hold?: PreviewHold<LayoutState<T>, LayoutLocation> | null;
   proposal?: DndProposal<T>;
   proposalKey?: string;
   deadline?: number;
@@ -792,6 +794,38 @@ export class DndSessionCoordinator<T> extends SessionCore<
 
   protected isSpatial(target: LayoutLocation) {
     return target.kind === 'grid';
+  }
+
+  protected sameLocation(first: LayoutLocation, second: LayoutLocation) {
+    return sameLayoutLocation(first, second);
+  }
+
+  protected rebaseValue(value: DndValue<T>, committed: DndValue<T>) {
+    return rebaseLayoutState(value, committed);
+  }
+
+  protected pointerOccupant(
+    value: DndValue<T>,
+    target: LayoutLocation,
+    itemId: string,
+  ) {
+    if (target.kind !== 'grid') return null;
+    const zone = value.zones.find(entry => entry.id === target.zoneId);
+    if (!zone || zone.kind !== 'grid') return null;
+    const dragged = zone.placements.find(entry => entry.itemId === itemId);
+    if (!dragged || dragged.span.rows !== 1 || dragged.span.cols !== 1)
+      return null;
+    const { row, col } = target.position;
+    return (
+      zone.placements.find(
+        entry =>
+          entry.itemId !== itemId &&
+          row >= entry.position.row &&
+          row < entry.position.row + entry.span.rows &&
+          col >= entry.position.col &&
+          col < entry.position.col + entry.span.cols,
+      )?.itemId ?? null
+    );
   }
 
   /** Grid destinations need the span captured at activation. */

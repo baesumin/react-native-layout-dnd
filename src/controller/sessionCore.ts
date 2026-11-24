@@ -29,6 +29,19 @@ type OkCandidate<Value, Location> = Extract<
   { status: 'ok' }
 >;
 
+/**
+ * A candidate that left the pointer's cell under another item: the engine
+ * resolved the move somewhere else and that item now lies beneath the finger.
+ * Computing the next cell from this layout would read "still over the item
+ * that moved under me" as a drag back onto it and undo the move, so the
+ * candidate stays until the pointer leaves that item.
+ */
+export type PreviewHold<Value, Location> = {
+  occupantId: string;
+  committed: Value;
+  result: OkCandidate<Value, Location>;
+};
+
 export type CandidateFailure =
   'unresolvable' | 'search-budget' | 'invalid-target';
 
@@ -61,6 +74,7 @@ export type CoreSession<Value, Location> = DragStartEvent & {
   seq: number;
   target: Location | null;
   path: PreviewPath<Location, Value>;
+  hold?: PreviewHold<Value, Location> | null;
   deadline?: number;
 };
 
@@ -192,6 +206,18 @@ export abstract class SessionCore<
   protected abstract location(value: Value, itemId: string): Location | null;
   /** Spatial targets accumulate previews; ordered/list targets never do. */
   protected abstract isSpatial(target: Location): boolean;
+  protected abstract sameLocation(first: Location, second: Location): boolean;
+  /** Re-attach a stored preview to a recommit that changed only item data. */
+  protected abstract rebaseValue(value: Value, committed: Value): Value;
+  /**
+   * The other item covering the target cell of a single-cell dragged item in
+   * `value`, or null. Larger items address an anchor, not the pointer's cell.
+   */
+  protected abstract pointerOccupant(
+    value: Value,
+    target: Location,
+    itemId: string,
+  ): string | null;
   /** A failure detail that rejects the target before any computation. */
   protected abstract precheck(
     session: Session,
@@ -267,6 +293,9 @@ export abstract class SessionCore<
     const seq = session.seq;
     const committed = this.lastValidValue;
     const target = session.target;
+    // Every outcome but a shown same-zone candidate ends the hold.
+    const previousHold = session.hold;
+    session.hold = null;
     if (!target || !committed) {
       if (final) this.cancelWith('outside-zones');
       else this.showFailure(committed, 'outside-zones', false);
@@ -287,22 +316,48 @@ export abstract class SessionCore<
       from !== null &&
       this.isSpatial(target) &&
       target.zoneId === session.sourceZoneId;
-    let baseline: PreviewBaseline<Location, Value>;
-    if (accumulates) baseline = session.path.resolve(committed, from, target);
-    else {
-      session.path.reset();
-      baseline = { kind: 'compute', base: committed, cumulative: false };
+    // A recommit that changed only item data keeps the hold, like the path.
+    const kept =
+      previousHold && previousHold.committed !== committed
+        ? {
+            ...previousHold,
+            committed,
+            result: {
+              ...previousHold.result,
+              value: previousHold.result.changed
+                ? this.rebaseValue(previousHold.result.value, committed)
+                : committed,
+            },
+          }
+        : previousHold;
+    // The item's own committed cell always restores the committed layout.
+    const held =
+      accumulates &&
+      kept &&
+      !this.sameLocation(target, from) &&
+      this.pointerOccupant(kept.result.value, target, session.itemId) ===
+        kept.occupantId
+        ? kept
+        : null;
+    let baseline: PreviewBaseline<Location, Value> | null = null;
+    if (!held) {
+      if (accumulates) baseline = session.path.resolve(committed, from, target);
+      else {
+        session.path.reset();
+        baseline = { kind: 'compute', base: committed, cumulative: false };
+      }
     }
-    const result: CandidateResult<Value, Location> =
-      baseline.kind === 'restored'
+    const result: CandidateResult<Value, Location> = held
+      ? held.result
+      : baseline!.kind === 'restored'
         ? {
             status: 'ok',
-            value: baseline.step.value,
-            from: baseline.step.from,
-            to: baseline.step.to,
+            value: baseline!.step.value,
+            from: baseline!.step.from,
+            to: baseline!.step.to,
             changed: true,
           }
-        : this.compute(session, target, baseline, committed, from);
+        : this.compute(session, target, baseline!, committed, from);
     if (result.status !== 'ok') {
       const failure = candidateFailure(result.status);
       if (final) this.cancelWith(failure);
@@ -354,15 +409,23 @@ export abstract class SessionCore<
       return;
     }
     this.showCandidate(result);
-    if (baseline.kind === 'compute') {
-      if (accumulates && result.changed)
-        session.path.push(committed, {
-          target,
-          from,
-          to: result.to,
-          value: result.value,
-        });
-      else session.path.reset();
+    if (held) session.hold = held;
+    else {
+      if (baseline!.kind === 'compute') {
+        if (accumulates && result.changed)
+          session.path.push(committed, {
+            target,
+            from,
+            to: result.to,
+            value: result.value,
+          });
+        else session.path.reset();
+      }
+      const occupantId =
+        accumulates && !this.sameLocation(result.to, target)
+          ? this.pointerOccupant(result.value, target, session.itemId)
+          : null;
+      if (occupantId !== null) session.hold = { occupantId, committed, result };
     }
     if (!final) return;
     if (!result.changed) {

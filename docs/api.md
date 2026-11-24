@@ -181,6 +181,13 @@ moves build on the same baseline: an app dropped on another app sends that app
 to the cell the dragged app was last shown in, so dragging along a packed row
 carries the app across it one exchange at a time.
 
+A move can leave the pointer over another item instead of the dragged one: a
+1×1 insert item hops over an adjacent exchange item, which then lies under the
+finger. That preview is held while the pointer stays on that item, so moving
+across it neither undoes nor repeats the hop. The hold ends when the pointer
+leaves the item, and the dragged item's own committed cell still restores the
+committed layout.
+
 The path is dropped whenever the display returns to the committed value:
 leaving every zone, entering another zone, and a rejected or impossible
 candidate. Ordered zones and zones other than the source always compute from
